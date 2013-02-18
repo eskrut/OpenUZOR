@@ -1,13 +1,18 @@
 #include "sbfMesh.h"
 #include <boost/program_options.hpp>
-//#include <scotch/scotch.h>
-#include "scotch.h"
+#include <scotch/scotch.h>
+//#include "scotch.h"
+
+#include <vector>
+#include <list>
+#include <set>
+#include <unordered_set>
 
 namespace po = boost::program_options;
 using namespace std;
 using namespace sbf;
 
-int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, std::vector<int> numTargetByLayers);
+int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers);
 
 int main(int argc, char ** argv)
 {
@@ -61,11 +66,11 @@ int main(int argc, char ** argv)
 	regIndex.resize(1);
 	vector< vector<sbfSElement *> > selevels;
 	selevels.resize(numTargetByLayers.size() + 1);
-	selevels[0].reserve(numElems);
+	selevels[0].reserve(numElems*10);
 	for(int ct = 0; ct < numElems; ct++)
-		selevels[0].push_back( new sbfSElement(pMesh.get(), -1));
+		selevels[0].push_back( new sbfSElement(pMesh.get(), ct));
 	for(size_t ct = 0; ct < numTargetByLayers.size(); ct++){
-		selevels[ct+1].reserve(numTargetByLayers[ct]);
+		selevels[ct+1].reserve(numTargetByLayers[ct]*10);
 		for(int ct1 = 0; ct1 < numTargetByLayers[ct]; ct1++)
 			selevels[ct+1].push_back( new sbfSElement(pMesh.get(), ct1));
 	}
@@ -74,114 +79,115 @@ int main(int argc, char ** argv)
 		selevels[0][ct]->setRegElemIndexes(regIndex);
 	}
 
-//	generateLevels(selevels, numTargetByLayers);
+	generateLevels(selevels, numTargetByLayers);
+
+	for(size_t ct = 0; ct < numTargetByLayers.size(); ct++){
+		cout << "Level " << ct+1 << " contains " << selevels[ct+1].size() << endl;
+		sbfSELevel level;
+		level.setSize(selevels[ct].size());
+		level.setLevelIndex(ct+1);
+		for(int ctSE = 0; ctSE < selevels[ct].size(); ctSE++) level.setIndex(ctSE, selevels[ct][ctSE]->parent()->index());
+
+		level.writeToFile(lName.str().c_str(), ct+1);
+	}
+
+//	vector <double> facesWeigth;
+//	vector <int> facesOwners;
+//	vector <double> randoms;
+//	randoms.resize(50);
+//	srand (time(NULL));
+//	for(size_t ct = 0; ct < randoms.size(); ct++) randoms[ct] = ((double)rand())/RAND_MAX;
 //
-//	for(size_t ct = 0; ct < numTargetByLayers.size(); ct++){
-//		sbfSELevel level;
-//		level.setSize(selevels[ct].size());
-//		level.setLevelIndex(ct+1);
-//		for(int ctSE = 0; ctSE < selevels[ct].size(); ctSE++) level.setIndex(ctSE, selevels[ct][ctSE]->parent()->index());
+//	facesWeigth.reserve(numElems*20);
+//	facesOwners.reserve(numElems*20);
 //
-//		level.writeToFile(lName.str().c_str(), ct+1);
+//	for(int elemID = 0; elemID < numElems; elemID++){//Loop on elements
+//		sbfElement *elem = pMesh->elemPtr(elemID);
+//		vector<int> indexes = elem->indexes();
+//
+//		double faceWeigth;
+//		int facesOwner = elemID;
+//		list<int> inds;
+//		int count;
+//
+//		vector< vector<int> > facesNodesIndexes = elem->facesNodesIndexes();
+//		for(vector< vector<int> >::iterator itFace = facesNodesIndexes.begin(); itFace != facesNodesIndexes.end(); itFace++){//Loop on faces
+//			inds.clear();
+//			for(vector<int>::iterator itIndex = (*itFace).begin(); itIndex != (*itFace).end(); itIndex++)
+//				inds.push_back(*itIndex);
+//			inds.sort();
+//			count = 0; faceWeigth = 0; for(list<int>::iterator it = inds.begin(); it != inds.end(); it++) {faceWeigth += *it*randoms[count++];}
+//			facesWeigth.push_back(faceWeigth);
+//			facesOwners.push_back(facesOwner);
+//		}//Loop on faces
+//
+//	}//Loop on elements
+//
+//	quickAssociatedSortUp<double, int>(&facesWeigth[0], &facesOwners[0], 0, facesWeigth.size()-1);
+//
+//	cout << "sort done" << endl;
+//
+//	vector< list <int> > elemNeibour;
+//	elemNeibour.resize(numElems);
+//
+//	int vertnbr, edgenbr;
+//	vertnbr = numElems;
+//	edgenbr = 0;
+//
+//	int founded = 0, unfounded = 0;
+//
+//	vector <double>::iterator facesWeigthIt = facesWeigth.begin();
+//	vector <int>::iterator facesOwnersIt = facesOwners.begin();
+//	vector <double>::iterator facesWeigthEndM1 = facesWeigth.end() - 1;
+//	for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
+//		if(*facesWeigthIt == *(facesWeigthIt+1)){
+//			elemNeibour[*facesOwnersIt].push_back(*(facesOwnersIt+1));
+//			elemNeibour[*(facesOwnersIt+1)].push_back(*facesOwnersIt);
+//			facesWeigthIt++; facesOwnersIt++; edgenbr += 2;
+//			founded++;
+//		}
+//		else unfounded++;
 //	}
-
-	vector <double> facesWeigth;
-	vector <int> facesOwners;
-	vector <double> randoms;
-	randoms.resize(50);
-	srand (time(NULL));
-	for(size_t ct = 0; ct < randoms.size(); ct++) randoms[ct] = ((double)rand())/RAND_MAX;
-
-	facesWeigth.reserve(numElems*20);
-	facesOwners.reserve(numElems*20);
-
-	for(int elemID = 0; elemID < numElems; elemID++){//Loop on elements
-		sbfElement *elem = pMesh->elemPtr(elemID);
-		vector<int> indexes = elem->indexes();
-
-		double faceWeigth;
-		int facesOwner = elemID;
-		list<int> inds;
-		int count;
-
-		vector< vector<int> > facesNodesIndexes = elem->facesNodesIndexes();
-		for(vector< vector<int> >::iterator itFace = facesNodesIndexes.begin(); itFace != facesNodesIndexes.end(); itFace++){//Loop on faces
-			inds.clear();
-			for(vector<int>::iterator itIndex = (*itFace).begin(); itIndex != (*itFace).end(); itIndex++)
-				inds.push_back(*itIndex);
-			inds.sort();
-			count = 0; faceWeigth = 0; for(list<int>::iterator it = inds.begin(); it != inds.end(); it++) {faceWeigth += *it*randoms[count++];}
-			facesWeigth.push_back(faceWeigth);
-			facesOwners.push_back(facesOwner);
-		}//Loop on faces
-
-	}//Loop on elements
-
-	quickAssociatedSortUp<double, int>(&facesWeigth[0], &facesOwners[0], 0, facesWeigth.size()-1);
-
-	cout << "sort done" << endl;
-
-	vector< list <int> > elemNeibour;
-	elemNeibour.resize(numElems);
-
-	int vertnbr, edgenbr;
-	vertnbr = numElems;
-	edgenbr = 0;
-
-	int founded = 0, unfounded = 0;
-
-	vector <double>::iterator facesWeigthIt = facesWeigth.begin();
-	vector <int>::iterator facesOwnersIt = facesOwners.begin();
-	vector <double>::iterator facesWeigthEndM1 = facesWeigth.end() - 1;
-	for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
-		if(*facesWeigthIt == *(facesWeigthIt+1)){
-			elemNeibour[*facesOwnersIt].push_back(*(facesOwnersIt+1));
-			elemNeibour[*(facesOwnersIt+1)].push_back(*facesOwnersIt);
-			facesWeigthIt++; facesOwnersIt++; edgenbr += 2;
-			founded++;
-		}
-		else unfounded++;
-	}
-
-	vector <int> verttab, edgetab, parttab;
-	verttab.resize(vertnbr+1);
-	edgetab.resize(edgenbr);
-	parttab.resize(numElems);
-	int count = 0;
-	verttab[0] = count;
-	for(size_t ct = 0; ct < elemNeibour.size(); ct++){
-		for(list <int>::iterator it = elemNeibour[ct].begin(); it != elemNeibour[ct].end(); it++) edgetab[count++] = *it;
-		verttab[ct+1] = count;
-	}
-
-	SCOTCH_Strat stradat;
-	SCOTCH_stratInit(&stradat);
-	//SCOTCH_stratGraphMapBuild(&stradat,  SCOTCH_STRATSPEED, numTargetByLayers[0], 0.1);
-	SCOTCH_Graph grafdat;
-	SCOTCH_graphInit(&grafdat);
-	SCOTCH_graphBuild(&grafdat, 0, vertnbr, &verttab[0], &verttab[1], NULL, NULL, edgenbr, &edgetab[0], NULL);
-	SCOTCH_graphCheck(&grafdat);
-	SCOTCH_Arch archdat;
-	SCOTCH_archInit(&archdat);
-	SCOTCH_archCmplt(&archdat, numTargetByLayers[0]);
-	SCOTCH_graphMap(&grafdat, &archdat, &stradat, &parttab[0]);
-
-	sbfSELevel level;
-	level.setSize(numElems);
-	level.setLevelIndex(1);
-	for(int ct = 0; ct < numElems; ct++) level.setIndex(ct, parttab[ct]);
-
-	level.writeToFile(lName.str().c_str(), 1);
-//	pMesh->addElementGroup();
-//	for(int ct = 0; ct < numElems; ct++) pMesh->group(0)->addElement(ct, false);
-//	pMesh->writeMeshToFiles(oiName.str().c_str(), ocName.str().c_str(), omName.str().c_str());
+//
+//	vector <int> verttab, edgetab, parttab;
+//	verttab.resize(vertnbr+1);
+//	edgetab.resize(edgenbr);
+//	parttab.resize(numElems);
+//	int count = 0;
+//	verttab[0] = count;
+//	for(size_t ct = 0; ct < elemNeibour.size(); ct++){
+//		for(list <int>::iterator it = elemNeibour[ct].begin(); it != elemNeibour[ct].end(); it++) edgetab[count++] = *it;
+//		verttab[ct+1] = count;
+//	}
+//
+//	SCOTCH_Strat stradat;
+//	SCOTCH_stratInit(&stradat);
+//	//SCOTCH_stratGraphMapBuild(&stradat,  SCOTCH_STRATSPEED, numTargetByLayers[0], 0.1);
+//	SCOTCH_Graph grafdat;
+//	SCOTCH_graphInit(&grafdat);
+//	SCOTCH_graphBuild(&grafdat, 0, vertnbr, &verttab[0], &verttab[1], NULL, NULL, edgenbr, &edgetab[0], NULL);
+//	SCOTCH_graphCheck(&grafdat);
+//	SCOTCH_Arch archdat;
+//	SCOTCH_archInit(&archdat);
+//	SCOTCH_archCmplt(&archdat, numTargetByLayers[0]);
+//	SCOTCH_graphMap(&grafdat, &archdat, &stradat, &parttab[0]);
+//
+//	sbfSELevel level;
+//	level.setSize(numElems);
+//	level.setLevelIndex(1);
+//	for(int ct = 0; ct < numElems; ct++) level.setIndex(ct, parttab[ct]);
+//
+//	level.writeToFile(lName.str().c_str(), 1);
+////	pMesh->addElementGroup();
+////	for(int ct = 0; ct < numElems; ct++) pMesh->group(0)->addElement(ct, false);
+////	pMesh->writeMeshToFiles(oiName.str().c_str(), ocName.str().c_str(), omName.str().c_str());
 
 	cout << "DONE" << endl;
 
 	return 0;
 }
 
-int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, std::vector<int> numTargetByLayers){
+int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers){
 
 	sbfMesh * mesh = selements[0][0]->mesh();
 	if(!mesh) return 1;
@@ -335,6 +341,47 @@ int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, 
 			selements[ctLevel+1][parttab[ct]]->addChildren(selements[ctLevel][ct]);
 			//selements[ctLevel][ct]->setIndex(ct);
 		}
+
+		//There are SElements with some disconnected clusters of elements.
+		//For such SE split them to several SEs
+
+		for(std::vector<sbf::sbfSElement *>::iterator seIT = selements[ctLevel+1].begin(); seIT != selements[ctLevel+1].end(); seIT++){//Loop on SElements including new ones
+			set<int> allElemIndexes;//Indexes of all elements in this SE
+			for(int ct = 0; ct < (*seIT)->numSElements(); ct++) allElemIndexes.insert((*seIT)->children(ct)->index());
+			set<int> inOneSE;
+			inOneSE.insert(*(allElemIndexes.begin()));
+			bool flagChanges = true;
+			while(flagChanges){
+				flagChanges = false;
+				for(set<int>::iterator it = inOneSE.begin(); it != inOneSE.end(); it++){
+					for(list<int>::iterator itN = elemNeibour[*it].begin(); itN != elemNeibour[*it].end(); itN++){
+						if(allElemIndexes.count(*itN) && !inOneSE.count(*itN)){
+							inOneSE.insert(*itN);
+							flagChanges = true;
+						}
+					}
+				}
+			}
+			if(allElemIndexes.size() != inOneSE.size()){
+				set<int> inOtherSE;
+				(*seIT)->setChildrens(vector<sbfSElement *>{});
+				(*seIT)->numSElements();
+				for(set<int>::iterator it = inOneSE.begin(); it != inOneSE.end(); it++){
+					(*seIT)->addChildren(selements[ctLevel][*it]);
+					selements[ctLevel][*it]->setParent(*seIT);
+				}
+				for(set<int>::iterator it = allElemIndexes.begin(); it != allElemIndexes.end(); it++){
+					if(!inOneSE.count(*it))
+						inOtherSE.insert(*it);
+				}
+				selements[ctLevel+1].push_back(new sbfSElement((*seIT)->mesh(), selements[ctLevel+1].size()));
+				//numTargetByLayers[ctLevel]++;
+				for(set<int>::iterator it = inOtherSE.begin(); it != inOtherSE.end(); it++){
+					selements[ctLevel+1].back()->addChildren(selements[ctLevel][*it]);
+					selements[ctLevel][*it]->setParent(selements[ctLevel+1].back());
+				}
+			}
+		}//Loop on SElements including new ones
 
 		facesWeigth = facesWeigthNextLevel;
 		facesOwners = facesOwnersNextLevel;
