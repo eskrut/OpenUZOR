@@ -22,8 +22,8 @@
 #include <vtkFloatArray.h>
 #include <vtksys/SystemTools.hxx>
 
-VTKCellType sbfTypeToVTK(sbf::ElementType type);
-std::vector<int> sbfIndexesToVTK(sbf::ElementType type, std::vector<int> indexes);
+VTKCellType sbfTypeToVTK(ElementType type);
+std::vector<int> sbfIndexesToVTK(ElementType type, std::vector<int> indexes);
 
 sbfToVTKWriter::sbfToVTKWriter():
     indName_("ind.sba"),
@@ -76,14 +76,14 @@ void sbfToVTKWriter::check()
         bool flagSomeFileReadSuccess = false;
         for(std::list<SbaNameParts>::iterator it = nodesDataNames_.begin(); it != nodesDataNames_.end(); it++){
             const int numComponents = 3;
-            std::auto_ptr<sbf::NodesData<sbfReadWriteType, numComponents> > nodesData(new sbf::NodesData<sbfReadWriteType, numComponents>(catalog_+(*it).base, 0));
+            std::auto_ptr<NodesData<sbfReadWriteType, numComponents> > nodesData(new NodesData<sbfReadWriteType, numComponents>(catalog_+(*it).base, 0));
             nodesData->setNumDigits((*it).numDigits);
             nodesData->setStep(stepCount);
             if(nodesData->exist()) flagSomeFileReadSuccess = true;
         }
         for(std::list<SbaNameParts>::iterator it = solutionBundleNames_.begin(); it != solutionBundleNames_.end(); it++){
             const int numArrays = 20;
-            std::auto_ptr<sbf::SolutionBundle<sbfReadWriteType, numArrays> > solutionBundle(new sbf::SolutionBundle<sbfReadWriteType, numArrays>(catalog_+(*it).base, 0));
+            std::auto_ptr<SolutionBundle<sbfReadWriteType, numArrays> > solutionBundle(new SolutionBundle<sbfReadWriteType, numArrays>(catalog_+(*it).base, 0));
             solutionBundle->setNumDigits((*it).numDigits);
             solutionBundle->setStep(stepCount);
             if(solutionBundle->exist()) flagSomeFileReadSuccess = true;
@@ -108,7 +108,7 @@ int sbfToVTKWriter::write()
     check();
     if(!flagValidNames_) return 1;
 
-    std::auto_ptr<sbf::sbfMesh> mesh(new sbf::sbfMesh ());
+    std::auto_ptr<sbfMesh> mesh(new sbfMesh ());
     std::stringstream fullIName, fullCName, fullMName;
     fullIName << catalog_ << indName_;
     fullCName << catalog_ << crdName_;
@@ -122,13 +122,13 @@ int sbfToVTKWriter::write()
     vtkPoints * points = vtkPoints::New();
 
     points->SetNumberOfPoints(mesh->numNodes());
-    for(int ct = 0; ct < mesh->numNodes(); ct++) { sbf::sbfNode node = mesh->node(ct); points->SetPoint(ct, node.x() , node.y(), node.z()); }
+    for(int ct = 0; ct < mesh->numNodes(); ct++) { sbfNode node = mesh->node(ct); points->SetPoint(ct, node.x() , node.y(), node.z()); }
     grid->SetPoints(points);
 
     std::vector <int> cellTypes;
     cellTypes.reserve(mesh->numElements());
     for(int ct = 0; ct < mesh->numElements(); ct++){
-        sbf::sbfElement *elem = mesh->elemPtr(ct);
+        sbfElement *elem = mesh->elemPtr(ct);
         cellTypes.push_back(sbfTypeToVTK(elem->type()));
         cells->InsertNextCell(elem->numNodes());
         std::vector<int> indexes = sbfIndexesToVTK(elem->type(), elem->indexes());
@@ -162,11 +162,11 @@ int sbfToVTKWriter::write()
     const int nuArrays = 20;
 
     //write SE level info if exist
-    std::auto_ptr<sbf::sbfSELevelList> seList(new sbf::sbfSELevelList());
+    std::auto_ptr<sbfSELevelList> seList(new sbfSELevelList());
     seList->setMesh(mesh.get());
     seList->readFromFiles((catalog_ + levelBaseName_).c_str(), levelNumDigits_);
-    std::vector<sbf::sbfSElement *> fakeSElements;//Regular elements
-    std::vector< std::vector<sbf::sbfSElement *> > selements;
+    std::vector<sbfSElement *> fakeSElements;//Regular elements
+    std::vector< std::vector<sbfSElement *> > selements;
     selements = seList->selevels( & fakeSElements);
     std::vector< std::vector<int> > levelIndexes;
     levelIndexes.resize(seList->numLevels());
@@ -179,7 +179,7 @@ int sbfToVTKWriter::write()
         array->SetNumberOfComponents(1);
         array->SetNumberOfTuples(mesh->numElements());
         for(int ct1 = 0; ct1 < mesh->numElements(); ct1++){
-        	sbf::sbfSElement * se = fakeSElements.at(ct1);
+            sbfSElement * se = fakeSElements.at(ct1);
         	for(int ct2 = 0; ct2 <= ct; ct2++) se = se->parent();
         	array->SetComponent(ct1, 0, se->index());
         }
@@ -199,7 +199,7 @@ int sbfToVTKWriter::write()
             cout << "step " << stepCount << " of " << stepsToWrite_ << endl;
             bool flagSomeFileReadSuccess = false;
             for(std::list<SbaNameParts>::iterator it = nodesDataNames_.begin(); it != nodesDataNames_.end(); it++){//Process nodes data
-                std::auto_ptr<sbf::NodesData<sbfReadWriteType, numComponents> > nodesData(new sbf::NodesData<sbfReadWriteType, numComponents>(catalog_+(*it).base, mesh.get()));
+                std::unique_ptr<NodesData<sbfReadWriteType, numComponents> > nodesData(new NodesData<sbfReadWriteType, numComponents>(catalog_+(*it).base, mesh.get()));
                 nodesData->setNumDigits((*it).numDigits);
                 nodesData->setStep(stepCount);
                 int readRez = nodesData->readFromFile<sbfReadWriteType>();
@@ -235,14 +235,14 @@ int sbfToVTKWriter::write()
             }//Process nodes data
 
             for(std::list<SbaNameParts>::iterator it = solutionBundleNames_.begin(); it != solutionBundleNames_.end(); it++){//Process solution bundle data
-                std::auto_ptr<sbf::SolutionBundle<sbfReadWriteType, nuArrays> > solBundle(new sbf::SolutionBundle<sbfReadWriteType, nuArrays>(catalog_+(*it).base, mesh->numNodes()));
+                std::unique_ptr<SolutionBundle<sbfReadWriteType, nuArrays> > solBundle(new SolutionBundle<sbfReadWriteType, nuArrays>(catalog_+(*it).base, mesh->numNodes()));
                 solBundle->setStep(stepCount);
                 solBundle->setNumDigits((*it).numDigits);
                 int readRez = solBundle->readFromFile<sbfReadWriteType>();
                 if(readRez == 0){
                     for(int ct = 0; ct < nuArrays; ct++){
                         int index;
-                        sbf::NodesData<sbfReadWriteType, 1> * data = solBundle->array(ct);
+                        NodesData<sbfReadWriteType, 1> * data = solBundle->array(ct);
                         std::cout << ((*it).base + solBundle->name(ct)).c_str() << std::endl;
                         std::string arrName = (*it).base + solBundle->name(ct);
                         vtkDataArray * darray = grid->GetPointData()->GetArray(arrName.c_str(), index);
@@ -263,7 +263,7 @@ int sbfToVTKWriter::write()
                     if(solBundle->exist()){
                         for(int ct = 0; ct < nuArrays; ct++){
                             int index;
-                            sbf::NodesData<sbfReadWriteType, 1> * data = solBundle->array(ct);
+                            NodesData<sbfReadWriteType, 1> * data = solBundle->array(ct);
                             std::string arrName = (*it).base + solBundle->name(ct);
                             vtkDataArray * darray = grid->GetPointData()->GetArray(arrName.c_str(), index);
                             if(index > -1) darray->Delete();
@@ -317,30 +317,30 @@ int sbfToVTKWriter::write()
     return 0;
 }
 
-VTKCellType sbfTypeToVTK(sbf::ElementType type)
+VTKCellType sbfTypeToVTK(ElementType type)
 {
     //TODO add all types
     switch(type){
-    case sbf::BEAM_LINEAR_3DOF: return VTK_LINE;
-    case sbf::BEAM_QUADRATIC_3DOF: return VTK_QUADRATIC_EDGE;
-    case sbf::HEXAHEDRON_LINEAR: return VTK_HEXAHEDRON;
-    case sbf::HEXAHEDRON_QUADRATIC: return VTK_QUADRATIC_HEXAHEDRON;
-    case sbf::TETRAHEDRON_LINEAR: return VTK_TETRA;
-    case sbf::TETRAHEDRON_QUADRATIC: return VTK_QUADRATIC_TETRA;
+    case ElementType::BEAM_LINEAR_3DOF: return VTK_LINE;
+    case ElementType::BEAM_QUADRATIC_3DOF: return VTK_QUADRATIC_EDGE;
+    case ElementType::HEXAHEDRON_LINEAR: return VTK_HEXAHEDRON;
+    case ElementType::HEXAHEDRON_QUADRATIC: return VTK_QUADRATIC_HEXAHEDRON;
+    case ElementType::TETRAHEDRON_LINEAR: return VTK_TETRA;
+    case ElementType::TETRAHEDRON_QUADRATIC: return VTK_QUADRATIC_TETRA;
     default: break;
     }
     return VTK_EMPTY_CELL;
 }
 
-std::vector<int> sbfIndexesToVTK(sbf::ElementType type, std::vector<int> indexes)
+std::vector<int> sbfIndexesToVTK(ElementType type, std::vector<int> indexes)
 {
     std::vector<int> swappedIndexes = indexes;
     //TODO add all types
     switch(type){
-    case sbf::TETRAHEDRON_LINEAR: break;
-    case sbf::TETRAHEDRON_QUADRATIC: break;//TODO check this type numbering
-    case sbf::HEXAHEDRON_LINEAR: break;
-    case sbf::HEXAHEDRON_QUADRATIC:{
+    case ElementType::TETRAHEDRON_LINEAR: break;
+    case ElementType::TETRAHEDRON_QUADRATIC: break;//TODO check this type numbering
+    case ElementType::HEXAHEDRON_LINEAR: break;
+    case ElementType::HEXAHEDRON_QUADRATIC:{
         swappedIndexes[16] = indexes[12];
         swappedIndexes[17] = indexes[13];
         swappedIndexes[18] = indexes[14];

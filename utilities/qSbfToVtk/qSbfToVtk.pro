@@ -9,6 +9,7 @@ QT       += core gui
 TARGET = qSbfToVtk
 TEMPLATE = app
 
+QMAKE_CXXFLAGS += -std=c++11
 
 SOURCES += main.cpp\
         sbftovtkdialog.cpp\
@@ -21,7 +22,8 @@ FORMS    += sbftovtkdialog.ui
 
 win32:LIBS +=   -L"X:/Program64/libsbf/releaseWin"\
                 -L"C:/Program Files (x86)/VTK/lib/vtk-5.10"
-LIBS += -lsbf\
+LIBS += -L"$$(HOME)/lib"\
+        -lsbf\
         -lvtkFiltering\
         -lvtksys\
         -lvtkCommon\
