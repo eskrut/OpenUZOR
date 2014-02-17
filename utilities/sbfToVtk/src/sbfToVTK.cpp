@@ -137,7 +137,7 @@ int sbfToVTKWriter::write()
     grid->SetCells(&cellTypes[0], cells);
 
     vtkXMLUnstructuredGridWriter * writer = vtkXMLUnstructuredGridWriter::New();
-    writer->SetInput(grid);
+    writer->SetInputData(grid);
     std::stringstream fullVTKName;
     fullVTKName << catalog_ << vtkName_/* << "." << writer->GetDefaultFileExtension()*/;
     writer->SetFileName(fullVTKName.str().c_str());
