@@ -1,7 +1,7 @@
-#include "sbfMesh.h"
+#include "sbf.h"
+#include "sbfAdditions.h"
 #include <boost/program_options.hpp>
 #include <scotch/scotch.h>
-//#include "scotch.h"
 
 #include <vector>
 #include <list>
@@ -9,10 +9,8 @@
 #include <unordered_set>
 
 namespace po = boost::program_options;
-using namespace std;
-using namespace sbf;
 
-int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers);
+int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers);
 
 int main(int argc, char ** argv)
 {
@@ -187,7 +185,7 @@ int main(int argc, char ** argv)
 	return 0;
 }
 
-int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers){
+int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers){
 
 	sbfMesh * mesh = selements[0][0]->mesh();
 	if(!mesh) return 1;
@@ -223,7 +221,7 @@ int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, 
 
 	}//Loop on elements
 
-	quickAssociatedSortUp<double, int>(&facesWeigth[0], &facesOwners[0], 0, facesWeigth.size()-1);
+	quickAssociatedSort<double, int>(&facesWeigth[0], &facesOwners[0], 0, facesWeigth.size()-1);
 
 	cout << "sort done" << endl;
 
@@ -345,7 +343,7 @@ int generateLevels(std::vector< std::vector<sbf::sbfSElement *> >  & selements, 
 		//There are SElements with some disconnected clusters of elements.
 		//For such SE split them to several SEs
 
-		for(std::vector<sbf::sbfSElement *>::iterator seIT = selements[ctLevel+1].begin(); seIT != selements[ctLevel+1].end(); seIT++){//Loop on SElements including new ones
+		for(std::vector<sbfSElement *>::iterator seIT = selements[ctLevel+1].begin(); seIT != selements[ctLevel+1].end(); seIT++){//Loop on SElements including new ones
 			set<int> allElemIndexes;//Indexes of all elements in this SE
 			for(int ct = 0; ct < (*seIT)->numSElements(); ct++) allElemIndexes.insert((*seIT)->children(ct)->index());
 			set<int> inOneSE;

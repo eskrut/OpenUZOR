@@ -1,1 +1,17 @@
 .DS_Store
+*/.DS_Store
+*/*/.DS_Store
+build*
+**/build*
+**/Release*
+**/release*
+**/Debug*
+**/debug*
+*/*/build*
+*/*/Release*
+*/*/release*
+*/*/Debug*
+*/*/debug*
+*.user
+*/*.user
+*/*/*.user
