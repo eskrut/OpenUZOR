@@ -1,7 +1,7 @@
 project(qSbfToVTK)
 cmake_minimum_required(VERSION 2.8)
 aux_source_directory(. SRC_LIST)
-include_directories(../sbfToVtk/src)
+include_directories(../sbfToVtk)
 
 if(UNIX)
     list(APPEND CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
@@ -39,7 +39,7 @@ else()
   qt4_wrap_cpp(MOCSrcs sbftovtkdialog.h)
 endif()
 
-add_executable(${PROJECT_NAME} ${SRC_LIST} ../sbfToVtk/src/sbfToVTK.cpp ${MOCSrcs} ${UISrcs})
+add_executable(${PROJECT_NAME} ${SRC_LIST} ../sbfToVtk/sbfToVTK.cpp ${MOCSrcs} ${UISrcs})
 target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${SBF_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})

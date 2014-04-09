@@ -47,6 +47,11 @@ sbfToVTKWriter::sbfToVTKWriter():
         catalog_ += "/";
 }
 
+sbfToVTKWriter::~sbfToVTKWriter()
+{
+
+}
+
 void sbfToVTKWriter::check()
 {
     // Check base files
@@ -188,6 +193,7 @@ int sbfToVTKWriter::write()
 
     if(stepsToWrite_ > 0){
         cout << "Will write " << stepsToWrite_ << " steps:" << endl;
+        report.createNewProgress("Writing time steps");
         writer->SetNumberOfTimeSteps(stepsToWrite_);
     }
 
@@ -196,7 +202,8 @@ int sbfToVTKWriter::write()
         bool flagNextDataExisted = true;
         int stepCount = 1;
         while(flagNextDataExisted && stepCount <= stepsToWrite_){
-            cout << "step " << stepCount << " of " << stepsToWrite_ << endl;
+//            cout << "step " << stepCount << " of " << stepsToWrite_ << endl;
+            report.updateProgress(0, stepsToWrite_, stepCount);
             bool flagSomeFileReadSuccess = false;
             for(std::list<SbaNameParts>::iterator it = nodesDataNames_.begin(); it != nodesDataNames_.end(); it++){//Process nodes data
                 std::unique_ptr<NodesData<sbfReadWriteType, numComponents> > nodesData(new NodesData<sbfReadWriteType, numComponents>(catalog_+(*it).base, mesh.get()));
