@@ -6,11 +6,12 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <map>
 #include <unordered_set>
 
 namespace po = boost::program_options;
 
-int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers);
+int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers, bool verbouse);
 
 int main(int argc, char ** argv)
 {
@@ -19,6 +20,7 @@ int main(int argc, char ** argv)
 	std::string numTargetByLayersStr;
 	std::string catalog, indName, crdName, mtrName, levelBase;
 	po::options_description desc("Program options");
+    bool verbouse = false;
 	desc.add_options()
 					("help,h", "print help message")
 					("num-se,n", po::value<std::string>(&numTargetByLayersStr)->default_value("16"), "target numbers of SE by layers i.e. '64,8,2'")
@@ -27,12 +29,15 @@ int main(int argc, char ** argv)
 					("crd-file,c", po::value<std::string>(&crdName)->default_value("crd.sba"), "crd file")
 					("mtr-file,m", po::value<std::string>(&mtrName)->default_value("mtr001.sba"), "mtr file")
 					("level-base,l", po::value<std::string>(&levelBase)->default_value("level"), "level files base name")
+                    ("verbouse,v", "make verbouse output")
 					;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
 	po::notify(vm);
 
 	if (vm.count("help") || vm.count("h")) { std::cout << desc << "\n"; return 1; }
+
+    if (vm.count("verbouse") || vm.count("v")) verbouse = true;
 
 	//extract number of SE by layers from cmd string
     std::stringstream sstr(numTargetByLayersStr);
@@ -51,11 +56,8 @@ int main(int argc, char ** argv)
 	lName << catalog << levelBase;
 	//Creating mesh
 	std::auto_ptr<sbfMesh> pMesh(new sbfMesh());
-	if(pMesh->readMeshFromFiles(iName.str().c_str(), cName.str().c_str(), mName.str().c_str()))
-	//if(pMesh->readIndFromFile(iName.str().c_str()))
-	{std::cout << "error while mesh reading" << std::endl; return 1;}
-	//pMesh->printInfo();
-	//pMesh->optimizeNodesNumbering();
+    if(pMesh->readMeshFromFiles(iName.str().c_str(), cName.str().c_str(), mName.str().c_str()))
+    {std::cout << "error while mesh reading" << std::endl; return 1;}
 
 	int numElems = pMesh->numElements();
 
@@ -68,7 +70,7 @@ int main(int argc, char ** argv)
 	for(int ct = 0; ct < numElems; ct++)
 		selevels[0].push_back( new sbfSElement(pMesh.get(), ct));
 	for(size_t ct = 0; ct < numTargetByLayers.size(); ct++){
-		selevels[ct+1].reserve(numTargetByLayers[ct]*10);
+        selevels[ct+1].reserve(numTargetByLayers[ct]*100);
 		for(int ct1 = 0; ct1 < numTargetByLayers[ct]; ct1++)
 			selevels[ct+1].push_back( new sbfSElement(pMesh.get(), ct1));
 	}
@@ -77,7 +79,7 @@ int main(int argc, char ** argv)
 		selevels[0][ct]->setRegElemIndexes(regIndex);
 	}
 
-	generateLevels(selevels, numTargetByLayers);
+    generateLevels(selevels, numTargetByLayers, verbouse);
 
 	for(size_t ct = 0; ct < numTargetByLayers.size(); ct++){
 		std::cout << "Level " << ct+1 << " contains " << selevels[ct+1].size() << std::endl;
@@ -89,103 +91,12 @@ int main(int argc, char ** argv)
 		level.writeToFile(lName.str().c_str(), ct+1);
 	}
 
-//	vector <double> facesWeigth;
-//	vector <int> facesOwners;
-//	vector <double> randoms;
-//	randoms.resize(50);
-//	srand (time(NULL));
-//	for(size_t ct = 0; ct < randoms.size(); ct++) randoms[ct] = ((double)rand())/RAND_MAX;
-//
-//	facesWeigth.reserve(numElems*20);
-//	facesOwners.reserve(numElems*20);
-//
-//	for(int elemID = 0; elemID < numElems; elemID++){//Loop on elements
-//		sbfElement *elem = pMesh->elemPtr(elemID);
-//		vector<int> indexes = elem->indexes();
-//
-//		double faceWeigth;
-//		int facesOwner = elemID;
-//		list<int> inds;
-//		int count;
-//
-//		vector< vector<int> > facesNodesIndexes = elem->facesNodesIndexes();
-//		for(vector< vector<int> >::iterator itFace = facesNodesIndexes.begin(); itFace != facesNodesIndexes.end(); itFace++){//Loop on faces
-//			inds.clear();
-//			for(vector<int>::iterator itIndex = (*itFace).begin(); itIndex != (*itFace).end(); itIndex++)
-//				inds.push_back(*itIndex);
-//			inds.sort();
-//			count = 0; faceWeigth = 0; for(list<int>::iterator it = inds.begin(); it != inds.end(); it++) {faceWeigth += *it*randoms[count++];}
-//			facesWeigth.push_back(faceWeigth);
-//			facesOwners.push_back(facesOwner);
-//		}//Loop on faces
-//
-//	}//Loop on elements
-//
-//	quickAssociatedSortUp<double, int>(&facesWeigth[0], &facesOwners[0], 0, facesWeigth.size()-1);
-//
-//	std::cout << "sort done" << std::endl;
-//
-//	vector< list <int> > elemNeibour;
-//	elemNeibour.resize(numElems);
-//
-//	int vertnbr, edgenbr;
-//	vertnbr = numElems;
-//	edgenbr = 0;
-//
-//	int founded = 0, unfounded = 0;
-//
-//	vector <double>::iterator facesWeigthIt = facesWeigth.begin();
-//	vector <int>::iterator facesOwnersIt = facesOwners.begin();
-//	vector <double>::iterator facesWeigthEndM1 = facesWeigth.end() - 1;
-//	for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
-//		if(*facesWeigthIt == *(facesWeigthIt+1)){
-//			elemNeibour[*facesOwnersIt].push_back(*(facesOwnersIt+1));
-//			elemNeibour[*(facesOwnersIt+1)].push_back(*facesOwnersIt);
-//			facesWeigthIt++; facesOwnersIt++; edgenbr += 2;
-//			founded++;
-//		}
-//		else unfounded++;
-//	}
-//
-//	vector <int> verttab, edgetab, parttab;
-//	verttab.resize(vertnbr+1);
-//	edgetab.resize(edgenbr);
-//	parttab.resize(numElems);
-//	int count = 0;
-//	verttab[0] = count;
-//	for(size_t ct = 0; ct < elemNeibour.size(); ct++){
-//		for(list <int>::iterator it = elemNeibour[ct].begin(); it != elemNeibour[ct].end(); it++) edgetab[count++] = *it;
-//		verttab[ct+1] = count;
-//	}
-//
-//	SCOTCH_Strat stradat;
-//	SCOTCH_stratInit(&stradat);
-//	//SCOTCH_stratGraphMapBuild(&stradat,  SCOTCH_STRATSPEED, numTargetByLayers[0], 0.1);
-//	SCOTCH_Graph grafdat;
-//	SCOTCH_graphInit(&grafdat);
-//	SCOTCH_graphBuild(&grafdat, 0, vertnbr, &verttab[0], &verttab[1], NULL, NULL, edgenbr, &edgetab[0], NULL);
-//	SCOTCH_graphCheck(&grafdat);
-//	SCOTCH_Arch archdat;
-//	SCOTCH_archInit(&archdat);
-//	SCOTCH_archCmplt(&archdat, numTargetByLayers[0]);
-//	SCOTCH_graphMap(&grafdat, &archdat, &stradat, &parttab[0]);
-//
-//	sbfSELevel level;
-//	level.setSize(numElems);
-//	level.setLevelIndex(1);
-//	for(int ct = 0; ct < numElems; ct++) level.setIndex(ct, parttab[ct]);
-//
-//	level.writeToFile(lName.str().c_str(), 1);
-////	pMesh->addElementGroup();
-////	for(int ct = 0; ct < numElems; ct++) pMesh->group(0)->addElement(ct, false);
-////	pMesh->writeMeshToFiles(oiName.str().c_str(), ocName.str().c_str(), omName.str().c_str());
-
 	std::cout << "DONE" << std::endl;
 
 	return 0;
 }
 
-int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers){
+int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::vector<int> & numTargetByLayers, bool verbouse){
 
 	sbfMesh * mesh = selements[0][0]->mesh();
 	if(!mesh) return 1;
@@ -230,16 +141,11 @@ int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::
 		int numSElems = selements[ctLevel].size();
 
 		int vertnbr, edgenbr;
-		vertnbr = numSElems;
-		edgenbr = 0;
-
-		std::vector< std::vector <int> > regElemIndexes;
-		regElemIndexes.reserve(numSElems);
-		for(size_t ct = 0; ct < numSElems; ct++)
-			regElemIndexes.push_back(selements[ctLevel][ct]->regElemIndexes());
+        vertnbr = numSElems;
+        edgenbr = 0;
 
 		std::vector< std::list <int> > elemNeibour;
-		elemNeibour.resize(numSElems);
+        elemNeibour.resize(vertnbr);
 
 		int founded = 0, unfounded = 0;
 
@@ -258,23 +164,14 @@ int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::
 				int ownerSE0 = -1, ownerSE1 = -1;
 				bool inSame = false;
 				if(ctLevel == 0){ownerSE0 = owner0; ownerSE1 = owner1;}
-				else{
-//					for(int ct = 0; ct < numSElems; ct++){
-//						int count = 0;
-//						for(size_t ctElem = 0; ctElem < regElemIndexes[ct].size(); ctElem++){
-//							if( regElemIndexes[ct][ctElem] == owner0){ ownerSE0 = ct; count++; }
-//							else if( regElemIndexes[ct][ctElem] == owner1){ ownerSE1 = ct; count++; }
-//							if(count > 1){inSame = true; break;}
-//						}
-//						if(inSame) break;
-//					}
+                else{
 					sbfSElement * se = selements[0][owner0];
 					for(int ct = 0; ct < ctLevel; ct++) se = se->parent();
 					ownerSE0 = se->index();
 					se = selements[0][owner1];
 					for(int ct = 0; ct < ctLevel; ct++) se = se->parent();
 					ownerSE1 = se->index();
-					if(owner0 == owner1) inSame = true;
+                    if(ownerSE0 == ownerSE1) inSame = true;
 				}
 				if (inSame){ facesWeigthIt++; facesOwnersIt++; continue; }
 				elemNeibour[ownerSE1].push_back(ownerSE0);
@@ -286,14 +183,12 @@ int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::
 				facesWeigthIt++; facesOwnersIt++;
 				founded++;
 			}
-			else unfounded++;
+            else unfounded++;
 		}
 
 		std::vector <int> verttab, edgetab, edlotab, parttab;
 		verttab.resize(vertnbr+1);
-		parttab.resize(vertnbr);
-		//edgetab.resize(edgenbr);
-		//edgetab.resize(edgenbr);
+        parttab.resize(vertnbr);
 		int count = 0;
 		verttab[0] = count;
 		for(size_t ct = 0; ct < elemNeibour.size(); ct++){
@@ -310,34 +205,38 @@ int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::
 			std::list <int>::iterator itA = elemNeibourAllBegin;
 			for(std::list <int>::iterator itU = elemNeibourUniqueBegin; itU != elemNeibourUniqueEnd; itU++)
 			{
-				int numAcuarence = 0;
-				while(*itA == *itU && itA != elemNeibourAllEnd){
-					numAcuarence++;
-					itA++;
-				}
-				edgetab.push_back(*itU);
-				edlotab.push_back(numAcuarence);
-				count++;
-				edgenbr++;
+                if(ct != *itU){
+                    int numAcuarence = 0;
+                    while(*itA == *itU && itA != elemNeibourAllEnd){
+                        numAcuarence++;
+                        itA++;
+                    }
+                    edgetab.push_back(*itU);
+                    edlotab.push_back(numAcuarence);
+                    count++;
+                    edgenbr++;
+                }
 			}
 			verttab[ct+1] = count;
 		}
 
 		SCOTCH_Strat stradat;
-		SCOTCH_stratInit(&stradat);
+        SCOTCH_stratInit(&stradat);
 		SCOTCH_Graph grafdat;
-		SCOTCH_graphInit(&grafdat);
-		SCOTCH_graphBuild(&grafdat, 0, vertnbr, &verttab[0], &verttab[1], NULL, NULL, edgenbr, &edgetab[0], &edlotab[0]);
-		SCOTCH_graphCheck(&grafdat);
+        SCOTCH_graphInit(&grafdat);
+        SCOTCH_graphBuild(&grafdat, 0, vertnbr, verttab.data(), nullptr, nullptr, nullptr, edgenbr, edgetab.data(), edlotab.data()/*nullptr*/);
+        SCOTCH_graphCheck(&grafdat);
+        FILE *f=std::fopen(("graph" + std::to_string(ctLevel)).c_str(), "w");
+        SCOTCH_graphSave(&grafdat, f);
+        std::fclose(f);
 		SCOTCH_Arch archdat;
 		SCOTCH_archInit(&archdat);
 		SCOTCH_archCmplt(&archdat, numTargetSE);
-		SCOTCH_graphMap(&grafdat, &archdat, &stradat, &parttab[0]);
+        SCOTCH_graphMap(&grafdat, &archdat, &stradat, &parttab[0]);
 
 		for(int ct = 0; ct < numSElems; ct++){
 			selements[ctLevel][ct]->setParent(selements[ctLevel+1][parttab[ct]]);
-			selements[ctLevel+1][parttab[ct]]->addChildren(selements[ctLevel][ct]);
-			//selements[ctLevel][ct]->setIndex(ct);
+            selements[ctLevel+1][parttab[ct]]->addChildren(selements[ctLevel][ct]);
 		}
 
 		//There are SElements with some disconnected clusters of elements.
@@ -372,14 +271,35 @@ int generateLevels(std::vector< std::vector<sbfSElement *> >  & selements, std::
 					if(!inOneSE.count(*it))
 						inOtherSE.insert(*it);
 				}
-				selements[ctLevel+1].push_back(new sbfSElement((*seIT)->mesh(), selements[ctLevel+1].size()));
-				//numTargetByLayers[ctLevel]++;
+                sbfSElement *additionalSE = new sbfSElement((*seIT)->mesh(), selements[ctLevel+1].size());
 				for(std::set<int>::iterator it = inOtherSE.begin(); it != inOtherSE.end(); it++){
-					selements[ctLevel+1].back()->addChildren(selements[ctLevel][*it]);
-					selements[ctLevel][*it]->setParent(selements[ctLevel+1].back());
+                    additionalSE->addChildren(selements[ctLevel][*it]);
+                    selements[ctLevel][*it]->setParent(additionalSE);
 				}
+                selements[ctLevel+1].push_back(additionalSE);
+                if ( verbouse ) std::cout << "Split disconnected SE to two of sizes: " << inOneSE.size() << ", " << inOtherSE.size() << std::endl;
 			}
 		}//Loop on SElements including new ones
+
+//        //Check if SE contain only one child
+//        std::vector<int> oneChildIndexes;
+//        for(auto seIT = selements[ctLevel+1].begin(); seIT != selements[ctLevel+1].end(); seIT++)
+//            if((*seIT)->numSElements() == 1) {
+//                if ( verbouse ) std::cout << "Only one child " << (*seIT)->index() << std::endl;
+//                oneChildIndexes.push_back((*seIT)->index());
+//            }
+//        //Try to correct this level
+//        for(auto it : oneChildIndexes) {
+//            //Find smallest SE to attach this SE
+//            std::map<int /*size*/, int /*index*/> neighborMap;
+//            for(auto neighbor : elemNeibour[it]) {
+//                neighborMap.insert(std::pair<int /*size*/, int /*index*/>(selements[ctLevel][neighbor]->parent()->numSElements(), neighbor));
+//            }
+//            auto lowest = neighborMap.begin();
+//            if ( verbouse ) std::cout << lowest->first << " " << lowest->second << std::endl;
+//            selements[ctLevel][lowest->second]->parent()->addChildren(selements[ctLevel][it]);
+//            selements[ctLevel][it]->setParent(selements[ctLevel][lowest->second]->parent());
+//        }
 
 		facesWeigth = facesWeigthNextLevel;
 		facesOwners = facesOwnersNextLevel;
