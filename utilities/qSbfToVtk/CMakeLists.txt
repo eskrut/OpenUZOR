@@ -4,7 +4,7 @@ aux_source_directory(. SRC_LIST)
 include_directories(../sbfToVtk)
 
 if(UNIX)
-    list(APPEND CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -pedantic ${CMAKE_CXX_FLAGS}")
 endif()
 
 find_package(sbf REQUIRED)

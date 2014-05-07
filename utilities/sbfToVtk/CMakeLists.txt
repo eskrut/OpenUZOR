@@ -4,7 +4,7 @@ aux_source_directory(. SRC_LIST)
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 
 if(UNIX)
-    list(APPEND CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wpedantic ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -pedantic ${CMAKE_CXX_FLAGS}")
 endif()
 
 find_package(sbf REQUIRED)
