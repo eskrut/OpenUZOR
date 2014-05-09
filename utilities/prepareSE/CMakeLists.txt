@@ -15,4 +15,4 @@ find_package(Boost COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 
-target_link_libraries(${PROJECT_NAME} scotch scotcherr)
+target_link_libraries(${PROJECT_NAME} metis)
