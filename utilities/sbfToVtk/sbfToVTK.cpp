@@ -330,6 +330,8 @@ VTKCellType sbfTypeToVTK(ElementType type)
     switch(type){
     case ElementType::BEAM_LINEAR_3DOF: return VTK_LINE;
     case ElementType::BEAM_QUADRATIC_3DOF: return VTK_QUADRATIC_EDGE;
+    case ElementType::BEAM_LINEAR_6DOF: return VTK_LINE;
+    case ElementType::BEAM_QUADRATIC_6DOF: return VTK_QUADRATIC_EDGE;
     case ElementType::HEXAHEDRON_LINEAR: return VTK_HEXAHEDRON;
     case ElementType::HEXAHEDRON_QUADRATIC: return VTK_QUADRATIC_HEXAHEDRON;
     case ElementType::TETRAHEDRON_LINEAR: return VTK_TETRA;
