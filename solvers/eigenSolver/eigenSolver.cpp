@@ -84,7 +84,7 @@ auto solve = [](sbfMatrixIterator *stiffIterator, sbfMatrixIterator *iCholIterat
         for(int ct = 0; ct < numAllDof; ++ct) if ( rNorm < fabs(r[ct]) ) rNorm = std::fabs(r[ct]);
         numIterations++;
     }
-    report("rNorm=", rNorm, " numIter=", numIterations);
+//    report("rNorm=", rNorm, " numIter=", numIterations);
 };
 
 EigenSolver::EigenSolver(const sbfStiffMatrix *stiff, const double *diagMass) :
@@ -94,7 +94,7 @@ EigenSolver::EigenSolver(const sbfStiffMatrix *stiff, const double *diagMass) :
 {
 }
 
-void EigenSolver::compute(int numTarget, double convFactor)
+void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formConvFactor)
 {
 
     //Some assertions
@@ -145,7 +145,7 @@ void EigenSolver::compute(int numTarget, double convFactor)
         // K * X_{k+1} = M * X_k
         //TODO this could be done in parallel
         for(int ct = 0; ct < numEig_; ++ct)
-            solve(stiffIterator, iCholIterator, M_forms_[ct].data(), forms_[ct].data(), convFactor);
+            solve(stiffIterator, iCholIterator, M_forms_[ct].data(), forms_[ct].data(), formConvFactor);
 
         //Compute reduced matrixes
         //  K * X_{k+1}
@@ -208,7 +208,7 @@ void EigenSolver::compute(int numTarget, double convFactor)
 
         double convSum = 0.0;
         for(int ct = 0; ct < numEig_; ++ct) convSum += std::fabs((lambda_reduced[ct] - lambda_reduced_prev[ct])/lambda_reduced[ct]);
-        if(convSum < convFactor) converged = true;
+        if(convSum < lambdaConvFactor) converged = true;
         for(int ct = 0; ct < numEig_; ++ct) lambda_reduced_prev[ct] = lambda_reduced[ct];
         report("convSum=", convSum);
     }
