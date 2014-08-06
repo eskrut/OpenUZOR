@@ -18,17 +18,18 @@ struct SbaNameParts{
 
 class sbfToVTKWriter{
 public:
-	sbfToVTKWriter();
-	~sbfToVTKWriter();
+    sbfToVTKWriter();
+    ~sbfToVTKWriter();
 private:
-	sbfToVTKWriter(const sbfToVTKWriter & );
-	sbfToVTKWriter & operator= (const sbfToVTKWriter & );
+    sbfToVTKWriter(const sbfToVTKWriter & );
+    sbfToVTKWriter & operator= (const sbfToVTKWriter & );
 private:
-	std::string indName_;
-	std::string crdName_;
-	std::string mtrName_;
-	std::string catalog_;
-	std::string vtkName_;
+    std::string indName_;
+    std::string crdName_;
+    std::string mtrName_;
+    std::string namePrefix_;
+    std::string catalog_;
+    std::string vtkName_;
     std::string mtrBaseName_;
     int mtrNumDigits_;
     std::string levelBaseName_;
@@ -36,18 +37,19 @@ private:
     std::string sbaExtention_;
     std::list<SbaNameParts> solutionBundleNames_;
     std::list<SbaNameParts> nodesDataNames_;
-	bool flagValidNames_;
-	bool flagSaveLevels_;
-	int stepsToWrite_;
+    bool flagValidNames_;
+    bool flagSaveLevels_;
+    int stepsToWrite_;
     bool flagUseCompression_;
 
-	void check();
+    void check();
 public:
-	std::string & indName() {return indName_;}
-	std::string & crdName() {return crdName_;}
-	std::string & mtrName() {return mtrName_;}
-	std::string & catalog() {return catalog_;}
-	std::string & vtkName() {return vtkName_;}
+    std::string & indName() {return indName_;}
+    std::string & crdName() {return crdName_;}
+    std::string & namePrefix() {return namePrefix_;}
+    std::string & mtrName() {return mtrName_;}
+    std::string & catalog() {return catalog_;}
+    std::string & vtkName() {return vtkName_;}
     std::string & mtrBaseName() {return mtrBaseName_;}
     int & mtrNumDigits() {return mtrNumDigits_;}
     std::string & levelBaseName() {return levelBaseName_;}
@@ -57,7 +59,7 @@ public:
     std::list<SbaNameParts> & nodesDataNames() { return nodesDataNames_; }
     void setUseCompression(bool use) { flagUseCompression_ = use; }
 
-	int write(); // main write function
+    int write(); // main write function
 };
 
 #endif// _SBFTOVTK_H_

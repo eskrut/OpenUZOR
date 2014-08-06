@@ -32,6 +32,7 @@ sbfToVTKWriter::sbfToVTKWriter():
     catalog_("./"),
     vtkName_("vtk.vtu"),
     mtrBaseName_("mtr"),
+    namePrefix_(""),
     mtrNumDigits_(3),
     levelBaseName_("level"),
     levelNumDigits_(3),
@@ -59,10 +60,10 @@ void sbfToVTKWriter::check()
     std::ifstream testFile;
 
     std::list<std::string> namesToCheck;
-    namesToCheck.push_back(indName_);
-    namesToCheck.push_back(crdName_);
+    namesToCheck.push_back(namePrefix_ + indName_);
+    namesToCheck.push_back(namePrefix_ + crdName_);
     fileNameStream.str("");
-    fileNameStream << mtrBaseName_ << std::setw(mtrNumDigits_) << std::setfill('0') << 1 << "." << sbaExtention_;
+    fileNameStream << namePrefix_ + mtrBaseName_ << std::setw(mtrNumDigits_) << std::setfill('0') << 1 << "." << sbaExtention_;
     mtrName_ = fileNameStream.str();
     namesToCheck.push_back(mtrName_);
 
@@ -95,7 +96,7 @@ void sbfToVTKWriter::check()
         }
         //check mtr files
         fileNameStream.str("");
-        fileNameStream << catalog_ << "/" << mtrBaseName_ << std::setw(mtrNumDigits_) << std::setfill('0') << stepCount << "." << sbaExtention_;
+        fileNameStream << catalog_ << "/" << namePrefix_ + mtrBaseName_ << std::setw(mtrNumDigits_) << std::setfill('0') << stepCount << "." << sbaExtention_;
         std::ifstream mtrTest(fileNameStream.str().c_str(), std::ios_base::binary);
         if(mtrTest.good()){
             flagSomeFileReadSuccess = true;
@@ -115,8 +116,8 @@ int sbfToVTKWriter::write()
 
     std::auto_ptr<sbfMesh> mesh(new sbfMesh ());
     std::stringstream fullIName, fullCName, fullMName;
-    fullIName << catalog_ << indName_;
-    fullCName << catalog_ << crdName_;
+    fullIName << catalog_ << namePrefix_ + indName_;
+    fullCName << catalog_ << namePrefix_ + crdName_;
     fullMName << catalog_ << mtrName_;
     if( mesh->readMeshFromFiles(fullIName.str().c_str(), fullCName.str().c_str(), fullMName.str().c_str()) != 0 )
         return 2;
@@ -185,8 +186,8 @@ int sbfToVTKWriter::write()
         array->SetNumberOfTuples(mesh->numElements());
         for(int ct1 = 0; ct1 < mesh->numElements(); ct1++){
             sbfSElement * se = fakeSElements.at(ct1);
-        	for(int ct2 = 0; ct2 <= ct; ct2++) se = se->parent();
-        	array->SetComponent(ct1, 0, se->index());
+            for(int ct2 = 0; ct2 <= ct; ct2++) se = se->parent();
+            array->SetComponent(ct1, 0, se->index());
         }
         grid->GetCellData()->AddArray(array);
     }
@@ -290,7 +291,7 @@ int sbfToVTKWriter::write()
             {//Process material files
                 std::stringstream fileNameStream;
                 fileNameStream.str("");
-                fileNameStream << catalog_ << "/" << mtrBaseName_ << std::setw(mtrNumDigits_) << std::setfill('0') << stepCount << "." << sbaExtention_;
+                fileNameStream << catalog_ << "/" << namePrefix_ + mtrBaseName_ << std::setw(mtrNumDigits_) << std::setfill('0') << stepCount << "." << sbaExtention_;
                 std::ifstream mtrFile(fileNameStream.str().c_str(), std::ios_base::binary);
                 if(mtrFile.good()){
                     std::vector<int> mtr;

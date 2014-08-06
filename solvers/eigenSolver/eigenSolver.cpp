@@ -43,48 +43,48 @@ auto solve = [](sbfMatrixIterator *stiffIterator, sbfMatrixIterator *iCholIterat
     double alpha, betta;
 
     iChol->solve_L_LT_u_eq_f(disp, force, iCholIterator);
-//    for(int ct = 0; ct < numAllDof; ++ct) disp[ct] = 0.0;
-    mul(stiffIterator, disp, KU);
-    for(int ct = 0; ct < numAllDof; ++ct) r[ct] = force[ct] - KU[ct];
+////    for(int ct = 0; ct < numAllDof; ++ct) disp[ct] = 0.0;
+//    mul(stiffIterator, disp, KU);
+//    for(int ct = 0; ct < numAllDof; ++ct) r[ct] = force[ct] - KU[ct];
 
-    //Solve L*L^T*z = r
-    iChol->solve_L_LT_u_eq_f(z, r, iCholIterator);
-    for(int ct = 0; ct < numAllDof; ++ct) p[ct] = z[ct];
+//    //Solve L*L^T*z = r
+//    iChol->solve_L_LT_u_eq_f(z, r, iCholIterator);
+//    for(int ct = 0; ct < numAllDof; ++ct) p[ct] = z[ct];
 
-    double rNorm = 0.0;
-    for(int ct = 0; ct < numAllDof; ++ct) if ( rNorm < fabs(r[ct]) ) rNorm = std::fabs(r[ct]);
-    int numIterations = 0;
+//    double rNorm = 0.0;
+//    for(int ct = 0; ct < numAllDof; ++ct) if ( rNorm < fabs(r[ct]) ) rNorm = std::fabs(r[ct]);
+//    int numIterations = 0;
 
-    while(rNorm > rNormTarget) {
-        mul(stiffIterator, p, Kp);
-        double scal1 = 0, scal2 = 0;
-        for(int ct = 0; ct < numAllDof; ++ct) {
-            scal1 += z[ct]*r[ct];
-            scal2 += p[ct]*Kp[ct];
-        }
-        alpha = scal1/scal2;
-        for(int ct = 0; ct < numAllDof; ++ct) {
-            disp[ct] += alpha*p[ct];
-            r_p1[ct] = r[ct] - alpha*Kp[ct];
-        }
-        iChol->solve_L_LT_u_eq_f(z_p1, r_p1, iCholIterator);
-        scal1 = 0; scal2 = 0;
-        for(int ct = 0; ct < numAllDof; ++ct) {
-            scal1 += z_p1[ct]*r_p1[ct];
-            scal2 += z[ct]*r[ct];
-        }
-        betta = scal1/scal2;
-        for(int ct = 0; ct < numAllDof; ++ct) {
-            p_p1[ct] = z_p1[ct] + betta*p[ct];
-            z[ct] = z_p1[ct];
-            p[ct] = p_p1[ct];
-            r[ct] = r_p1[ct];
-        }
-        rNorm = 0.0;
-        for(int ct = 0; ct < numAllDof; ++ct) if ( rNorm < fabs(r[ct]) ) rNorm = std::fabs(r[ct]);
-        numIterations++;
-    }
-//    report("rNorm=", rNorm, " numIter=", numIterations);
+//    while(rNorm > rNormTarget) {
+//        mul(stiffIterator, p, Kp);
+//        double scal1 = 0, scal2 = 0;
+//        for(int ct = 0; ct < numAllDof; ++ct) {
+//            scal1 += z[ct]*r[ct];
+//            scal2 += p[ct]*Kp[ct];
+//        }
+//        alpha = scal1/scal2;
+//        for(int ct = 0; ct < numAllDof; ++ct) {
+//            disp[ct] += alpha*p[ct];
+//            r_p1[ct] = r[ct] - alpha*Kp[ct];
+//        }
+//        iChol->solve_L_LT_u_eq_f(z_p1, r_p1, iCholIterator);
+//        scal1 = 0; scal2 = 0;
+//        for(int ct = 0; ct < numAllDof; ++ct) {
+//            scal1 += z_p1[ct]*r_p1[ct];
+//            scal2 += z[ct]*r[ct];
+//        }
+//        betta = scal1/scal2;
+//        for(int ct = 0; ct < numAllDof; ++ct) {
+//            p_p1[ct] = z_p1[ct] + betta*p[ct];
+//            z[ct] = z_p1[ct];
+//            p[ct] = p_p1[ct];
+//            r[ct] = r_p1[ct];
+//        }
+//        rNorm = 0.0;
+//        for(int ct = 0; ct < numAllDof; ++ct) if ( rNorm < fabs(r[ct]) ) rNorm = std::fabs(r[ct]);
+//        numIterations++;
+//    }
+////    report("rNorm=", rNorm, " numIter=", numIterations);
 };
 
 EigenSolver::EigenSolver(const sbfStiffMatrix *stiff, const double *diagMass) :
@@ -117,7 +117,7 @@ void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formCon
     //Generate initial gess
     for(int ct = 0; ct < numEig_; ++ct) forms_[ct][ct] = 1.0;
 
-    CreateSmartAndRawPtr(sbfStiffMatrix, const_cast<sbfStiffMatrix*>(stiff_)->createIncompleteChol(), iChol);
+    CreateSmartAndRawPtr(sbfStiffMatrix, const_cast<sbfStiffMatrix*>(stiff_)->createChol(), iChol);
     CreateSmartAndRawPtr(sbfMatrixIterator, const_cast<sbfStiffMatrix*>(stiff_)->createIterator(), stiffIterator);
     CreateSmartAndRawPtr(sbfMatrixIterator, iChol->createIterator(), iCholIterator);
     CreateSmartAndRawPtr(double, new double [numEig_*numEig_], K_reduced);
@@ -210,7 +210,9 @@ void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formCon
         for(int ct = 0; ct < numEig_; ++ct) convSum += std::fabs((lambda_reduced[ct] - lambda_reduced_prev[ct])/lambda_reduced[ct]);
         if(convSum < lambdaConvFactor) converged = true;
         for(int ct = 0; ct < numEig_; ++ct) lambda_reduced_prev[ct] = lambda_reduced[ct];
-        report("convSum=", convSum);
+        double minLambda = lambda_reduced[0];
+        for(int ct = 0; ct < numEig_; ++ct) if( minLambda > lambda_reduced[ct] ) minLambda = lambda_reduced[ct];
+        report("convSum=", convSum, "first freq", std::sqrt(minLambda)/2.0/(std::atan(1)*4));
     }
 
     std::vector<double> tmpRez(lambda_reduced, lambda_reduced+numEig_);

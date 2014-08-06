@@ -8,18 +8,19 @@ namespace po = boost::program_options;
 
 int main (int argc, char ** argv)
 {
-    std::string catalog, indName, crdName, mtrBaseName, levelBase;
+    std::string catalog, indName, crdName, mtrBaseName, levelBase, prefix;
     std::string nodesDataNamesStr, solBundleNamesStr;
     int mtrNumDigits, nodeDataNumDigits, solBundleNumDigits;
     std::string sbaExtantion, vtkFileName;
     bool useCompression;
-	po::options_description desc("Program options");
-	desc.add_options()
+    po::options_description desc("Program options");
+    desc.add_options()
     ("help,h", "print help message")
     ("work-dir,w", po::value<std::string>(&catalog)->default_value("./"), "work catalog")
     ("ind-file,i", po::value<std::string>(&indName)->default_value("ind.sba"), "ind file")
     ("crd-file,c", po::value<std::string>(&crdName)->default_value("crd.sba"), "crd file")
     ("mtr-file,m", po::value<std::string>(&mtrBaseName)->default_value("mtr"), "mtr file base name")
+    ("prefix,p", po::value<std::string>(&prefix)->default_value(""), "prefix to add to standard names")
     ("mtr-digits", po::value<int>(&mtrNumDigits)->default_value(3), "mtr file digits number")
     ("level-base,l", po::value<std::string>(&levelBase)->default_value("level"), "level files base name")
     ("nodes-data,n", po::value<std::string>(&nodesDataNamesStr)->default_value(""), "base names for nodes data files separated with comma i.e. 'uuu,displ'")
@@ -30,26 +31,27 @@ int main (int argc, char ** argv)
     ("output,o", po::value<std::string>(&vtkFileName)->default_value("vtk.vtu"), "output file name")
     ("compression", po::value<bool>(&useCompression)->default_value(true), "use compression")
     ;
-	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-	po::notify(vm);
-    
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
     std::list<std::string> nodesDataNames, solBundleNames;
     std::stringstream sstr(nodesDataNamesStr);
     std::string entry;
-	while(getline(sstr, entry, ','))
-		nodesDataNames.push_back(entry);
+    while(getline(sstr, entry, ','))
+        nodesDataNames.push_back(entry);
     sstr.str(solBundleNamesStr);
     while(getline(sstr, entry, ','))
         solBundleNames.push_back(entry);
-    
-	if (vm.count("help") || vm.count("h")) { std::cout << desc << "\n"; return 1; }
+
+    if (vm.count("help") || vm.count("h")) { std::cout << desc << "\n"; return 1; }
 
     sbfToVTKWriter * writer = new sbfToVTKWriter ();
 
     writer->catalog() = catalog;
     writer->indName() = indName;
     writer->crdName() = crdName;
+    writer->namePrefix() = prefix;
     writer->mtrBaseName() = mtrBaseName;
     writer->mtrNumDigits() = mtrNumDigits;
     writer->sbaExtention() = sbaExtantion;
@@ -76,6 +78,6 @@ int main (int argc, char ** argv)
 
     writer->write();
 
-	delete writer;
-	return 0;
+    delete writer;
+    return 0;
 }
