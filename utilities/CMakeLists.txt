@@ -1,6 +1,7 @@
 option(BUILD_PREPARE_SE "Build prepareSE project" ON)
 option(BUILD_SBFTOVTK "Build sbfToVtk project" ON)
 option(BUILD_QSBFTOVTK "Build qSbfToVtk project" ON)
+option(BUILD_SBFVIEW "Build sbfView project" ON)
 
 if(BUILD_PREPARE_SE)
     message("Configuring prepareSE")
@@ -15,4 +16,9 @@ endif()
 if(BUILD_QSBFTOVTK)
     message("Configuring qSbfToVtk")
     add_subdirectory(qSbfToVtk)
+endif()
+
+if(BUILD_SBFVIEW)
+    message("Configuring sbfView")
+    add_subdirectory(sbfView)
 endif()

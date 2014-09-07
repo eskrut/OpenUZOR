@@ -10,7 +10,7 @@ endif()
 find_package(sbf REQUIRED)
 include_directories(${SBF_INCLUDE_DIRS})
 
-find_package(VTK 6.1.0 REQUIRED)
+find_package(VTK REQUIRED)
 include_directories(${VTK_INCLUDE_DIRS})
 
 set(TARGET_QT_VERSION "4" CACHE STRING "Expected Qt version")

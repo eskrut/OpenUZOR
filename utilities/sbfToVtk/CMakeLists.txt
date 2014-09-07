@@ -10,7 +10,7 @@ endif()
 find_package(sbf REQUIRED)
 include_directories(${SBF_INCLUDE_DIRS})
 
-find_package(VTK 6.1.0 COMPONENTS vtkCommonCore vtkIOXML vtkFiltersCore REQUIRED NO_MODULE)
+find_package(VTK COMPONENTS vtkCommonCore vtkIOXML vtkFiltersCore REQUIRED NO_MODULE)
 #include_directories(${VTK_INCLUDE_DIRS})
 include(${VTK_USE_FILE})
 
