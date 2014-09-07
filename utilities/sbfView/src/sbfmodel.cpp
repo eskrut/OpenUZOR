@@ -3,6 +3,8 @@
 #include <QSettings>
 #include "sbfNode.h"
 #include "sbfElement.h"
+#include "vtkCellData.h"
+#include "vtkIntArray.h"
 
 SbfModel::SbfModel(QObject *parent, QSettings *settings) :
     QObject(parent),
@@ -48,6 +50,10 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
         const int numElems = mesh_->numElements();
         std::vector<VTKCellType> cellTypes;
         cellTypes.reserve(numElems);
+        vtkSmartPointer<vtkIntArray> mtrData(vtkIntArray::New());
+        mtrData->SetName("materials");
+        mtrData->SetNumberOfComponents(1);
+        mtrData->SetNumberOfValues(numElems);
         for(int ct = 0; ct < numElems; ++ct) {
             auto elem = mesh_->elemPtr(ct);
             auto indexes = elem->indexes();
@@ -55,9 +61,12 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
             auto vtkIndexes = std::vector<vtkIdType>(indexes.begin(), indexes.end());
             cells_->InsertNextCell(elem->numNodes(), vtkIndexes.data());
             cellTypes.push_back(sbfTypeToVTK(elem->type()));
+            mtrData->SetValue(ct, elem->mtr()+1);
         }
         grid_->SetPoints(points_.GetPointer());
         grid_->SetCells(cellTypes.front(), cells_.GetPointer());
+        grid_->GetCellData()->AddArray(mtrData);
+        grid_->GetCellData()->SetScalars(mtrData);
     }
     return status;
 }

@@ -20,7 +20,7 @@ public:
 signals:
 
 public slots:
-
+    void resetView();
 };
 
 #endif // SBFVIEW_H

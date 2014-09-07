@@ -46,6 +46,7 @@ void SbfViewMainWindow::initializeShortCuts()
         if(!crdName.length()) return;
         mtrName = QFileDialog::getOpenFileName(this, tr("OPEN_FILE_MTR"), QFileInfo(crdName).absolutePath(), "*.sba");
         if ( !model_->readModel(indName, crdName, mtrName) ) {
+            view_->update();
             settings_->beginGroup("lastRead");
             settings_->setValue("catalog", QFileInfo(indName).absolutePath());
             settings_->endGroup();
