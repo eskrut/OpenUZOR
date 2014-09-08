@@ -46,10 +46,23 @@ void SbfViewMainWindow::initializeShortCuts()
         if(!crdName.length()) return;
         mtrName = QFileDialog::getOpenFileName(this, tr("OPEN_FILE_MTR"), QFileInfo(crdName).absolutePath(), "*.sba");
         if ( !model_->readModel(indName, crdName, mtrName) ) {
-            view_->update();
+            view_->setModel(model_);
             settings_->beginGroup("lastRead");
             settings_->setValue("catalog", QFileInfo(indName).absolutePath());
             settings_->endGroup();
         }
+    }));
+    auto setViewX = new QShortcut(QKeySequence("Alt+X"), this);
+    auto setViewY = new QShortcut(QKeySequence("Alt+Y"), this);
+    auto setViewZ = new QShortcut(QKeySequence("Alt+Z"), this);
+    auto setViewI = new QShortcut(QKeySequence("Alt+C"), this);
+    Q_ASSERT(connect(setViewX, &QShortcut::activated, view_, &SbfView::setViewYZ));
+    Q_ASSERT(connect(setViewY, &QShortcut::activated, view_, &SbfView::setViewZX));
+    Q_ASSERT(connect(setViewZ, &QShortcut::activated, view_, &SbfView::setViewXY));
+    Q_ASSERT(connect(setViewI, &QShortcut::activated, view_, &SbfView::setViewXYZ));
+
+    auto toggleGrid = new QShortcut(QKeySequence("Ctrl+G"), this);
+    Q_ASSERT(connect(toggleGrid, &QShortcut::activated, [=](){
+        view_->setEdgeVisible(!view_->edgeVisible());
     }));
 }

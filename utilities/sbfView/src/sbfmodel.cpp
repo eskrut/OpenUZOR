@@ -4,6 +4,7 @@
 #include "sbfNode.h"
 #include "sbfElement.h"
 #include "vtkCellData.h"
+#include "vtkPointData.h"
 #include "vtkIntArray.h"
 
 SbfModel::SbfModel(QObject *parent, QSettings *settings) :
@@ -32,6 +33,10 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
     int status = mesh_->readMeshFromFiles(indName.toLocal8Bit(), crdName.toLocal8Bit(), mtrName.toLocal8Bit());
     points_ = vtkPoints::New();
     cells_ = vtkCellArray::New();
+    const int numCellArray = grid_->GetCellData()->GetNumberOfArrays();
+    for(int ct = numCellArray-1; ct >= 0; --ct) grid_->GetCellData()->RemoveArray(ct);
+    const int numPointArray = grid_->GetPointData()->GetNumberOfArrays();
+    for(int ct = numPointArray-1; ct >= 0; --ct) grid_->GetPointData()->RemoveArray(ct);
     //TODO emit error message if something wrong
     if(settings_ && status == 0) {
         settings_->beginGroup("lastRead");
