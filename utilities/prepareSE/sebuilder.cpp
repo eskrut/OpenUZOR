@@ -1,12 +1,15 @@
 #include "sebuilder.h"
 #include <metis.h>
 #include <functional>
+#include <cassert>
 
-int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalance, bool verbouse);
-
-SEBuilder::SEBuilder(const sbfMesh *mesh) :
+SEBuilder::SEBuilder(const sbfMesh *mesh, const bool targetCut) :
     mesh_(mesh),
-    verbouse_(false)
+    verbouse_(false),
+    targetCut_(targetCut),
+    numIterations_(100),
+    numCuts_(3),
+    seed_(false)
 {
     seLevels_.setMesh(mesh_);
 }
@@ -32,7 +35,7 @@ void SEBuilder::make(const std::vector<int> &numTargetByLayers, const std::vecto
     for(int ct = 0; ct < numElems; ct++)
         selevels_[0][ct]->setRegElemIndexes({ct});
 
-    generateLevels(selevels_, numTargetByLayers, maxImbalanceByLayer, verbouse_);
+    generateLevels(numTargetByLayers, maxImbalanceByLayer);
 }
 
 void SEBuilder::write(const char *levelBaseName)
@@ -48,11 +51,8 @@ void SEBuilder::write(const char *levelBaseName)
     }
 }
 
-int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalance, bool verbouse){
-
-    const sbfMesh *mesh = selements[0][0]->mesh();
-    if(!mesh) return 1;
-    int numRegElems = selements[0].size();
+int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer){
+    int numRegElems = selevels_[0].size();
     std::vector <double> facesWeigth;
     std::vector <int> facesOwners;
     std::vector <double> randoms;
@@ -63,7 +63,7 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
     facesOwners.reserve(numRegElems*50);
 
     for(int elemID = 0; elemID < numRegElems; elemID++){//Loop on elements
-        sbfElement *elem = const_cast<sbfMesh*>(mesh)->elemPtr(elemID);
+        sbfElement *elem = const_cast<sbfMesh*>(mesh_)->elemPtr(elemID);
 
         double faceWeigth;
         int facesOwner = elemID;
@@ -85,11 +85,11 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
 
     quickAssociatedSort<double, int>(&facesWeigth[0], &facesOwners[0], 0, facesWeigth.size()-1);
 
-    if ( verbouse ) std::cout << "sort done" << std::endl;
+    if ( verbouse_ ) std::cout << "sort done" << std::endl;
 
     for(size_t ctLevel = 0; ctLevel < numTargetByLayers.size(); ctLevel++){//Loop on levels
         int numTargetSE = numTargetByLayers[ctLevel];
-        int numSElems = selements[ctLevel].size();
+        int numSElems = selevels_[ctLevel].size();
 
         int vertnbr, edgenbr;
         vertnbr = numSElems;
@@ -116,10 +116,10 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
                 bool inSame = false;
                 if(ctLevel == 0){ownerSE0 = owner0; ownerSE1 = owner1;}
                 else{
-                    sbfSElement * se = selements[0][owner0];
+                    sbfSElement * se = selevels_[0][owner0];
                     for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
                     ownerSE0 = se->index();
-                    se = selements[0][owner1];
+                    se = selevels_[0][owner1];
                     for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
                     ownerSE1 = se->index();
                     if(ownerSE0 == ownerSE1) inSame = true;
@@ -174,13 +174,20 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
         idx_t nvtxs = vertnbr, ncon = 1, nparts = numTargetSE, objval;
         idx_t options[METIS_NOPTIONS];
         METIS_SetDefaultOptions(options);
-        options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_VOL;
+        if (targetCut_)
+            options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+        else
+            options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_VOL;
         options[METIS_OPTION_NUMBERING] = 0;
-        options[METIS_OPTION_NITER] = 10000;
-        double maxLayerImbalance = maxImbalance.back();
-        if( ctLevel < maxImbalance.size() ) maxLayerImbalance = maxImbalance.at(ctLevel);
+        options[METIS_OPTION_NITER] = numIterations_;
+        options[METIS_OPTION_NCUTS] = numCuts_;
+        options[METIS_OPTION_MINCONN] = 1;
+        double maxLayerImbalance = maxImbalanceByLayer.back();
+        if( ctLevel < maxImbalanceByLayer.size() ) maxLayerImbalance = maxImbalanceByLayer.at(ctLevel);
         options[METIS_OPTION_UFACTOR] = static_cast<int>((maxLayerImbalance-1)*1000);
         options[METIS_OPTION_CONTIG] = 1; //Force contiguous partitions
+        if (seed_)
+            options[METIS_OPTION_SEED] = time(nullptr);
 //        options[METIS_OPTION_DBGLVL] = 1;
         int rez = METIS_PartGraphKway(&nvtxs,
                                       &ncon,
@@ -198,16 +205,30 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
                                       );
         if ( rez != METIS_OK ) throw std::runtime_error("Metis runtime failed :(");
 
+        //BUGFIX sometimes returned parttab is strange - it is not continious and not based with 0
+        {
+            std::set<int> parttabEntries;
+            for(auto p : parttab) parttabEntries.insert(p);
+            if ( parttabEntries.size() != nparts )
+                throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior.");
+//            std::map<int, int> partMap;
+//            int count = 0;
+//            for(auto p : parttabEntries) partMap.insert(std::make_pair(p, count++));
+//            for(auto &p : parttab) p = partMap[p];
+//            assert(parttabEntries.size() == nparts);
+        }
+
+
         for(int ct = 0; ct < numSElems; ct++){
-            selements[ctLevel][ct]->setParent(selements[ctLevel+1][parttab[ct]]);
-            selements[ctLevel+1][parttab[ct]]->addChildren(selements[ctLevel][ct]);
+            selevels_[ctLevel][ct]->setParent(selevels_[ctLevel+1][parttab[ct]]);
+            selevels_[ctLevel+1][parttab[ct]]->addChildren(selevels_[ctLevel][ct]);
         }
 
         //Metis solves following problem, but still it should be checked
         //There are SElements with some disconnected clusters of elements.
         //For such SE split them to several SEs
 
-        for(auto seIT = selements[ctLevel+1].begin(); seIT != selements[ctLevel+1].end(); seIT++){//Loop on SElements including new ones
+        for(auto seIT = selevels_[ctLevel+1].begin(); seIT != selevels_[ctLevel+1].end(); seIT++){//Loop on SElements including new ones
             std::set<int> allElemIndexes;//Indexes of all elements in this SE
             for(int ct = 0; ct < (*seIT)->numSElements(); ct++) allElemIndexes.insert((*seIT)->children(ct)->index());
             std::set<int> inOneSE;
@@ -229,20 +250,20 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
                 (*seIT)->setChildrens(std::vector<sbfSElement *>{});
                 (*seIT)->numSElements();
                 for(auto it = inOneSE.begin(); it != inOneSE.end(); it++){
-                    (*seIT)->addChildren(selements[ctLevel][*it]);
-                    selements[ctLevel][*it]->setParent(*seIT);
+                    (*seIT)->addChildren(selevels_[ctLevel][*it]);
+                    selevels_[ctLevel][*it]->setParent(*seIT);
                 }
                 for(auto it = allElemIndexes.begin(); it != allElemIndexes.end(); it++){
                     if(!inOneSE.count(*it))
                         inOtherSE.insert(*it);
                 }
-                sbfSElement *additionalSE = new sbfSElement((*seIT)->mesh(), selements[ctLevel+1].size());
+                sbfSElement *additionalSE = new sbfSElement((*seIT)->mesh(), selevels_[ctLevel+1].size());
                 for(auto it = inOtherSE.begin(); it != inOtherSE.end(); it++){
-                    additionalSE->addChildren(selements[ctLevel][*it]);
-                    selements[ctLevel][*it]->setParent(additionalSE);
+                    additionalSE->addChildren(selevels_[ctLevel][*it]);
+                    selevels_[ctLevel][*it]->setParent(additionalSE);
                 }
-                selements[ctLevel+1].push_back(additionalSE);
-                if ( verbouse ) std::cout << "Split disconnected SE to two of sizes: " << inOneSE.size() << ", " << inOtherSE.size() << std::endl;
+                selevels_[ctLevel+1].push_back(additionalSE);
+                if ( verbouse_ ) std::cout << "Split disconnected SE to two of sizes: " << inOneSE.size() << ", " << inOtherSE.size() << std::endl;
             }
         }//Loop on SElements including new ones
 
@@ -254,7 +275,7 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
         //get statistics
         std::list<int> selems;
         int numAll = 0;
-        for(auto se : selements[ctLevel+1]){
+        for(auto se : selevels_[ctLevel+1]){
             selems.push_back(se->numSElements());
             numAll += se->numSElements();
         }
@@ -262,9 +283,9 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
             throw std::runtime_error("SElements contain not all elements of previous layer");
         selems.sort();
         selems.reverse();
-        if ( verbouse ) { for (auto se : selems ) std::cout << se << "\t"; std::cout << "Imbalance is " << (1.0*selems.front())/selems.back() << std::endl; }
+        if ( verbouse_ ) { for (auto se : selems ) std::cout << se << "\t"; std::cout << "Imbalance is " << (1.0*selems.front())/selems.back() << std::endl; }
     }//Loop on levels
-    if(verbouse) {
+    if(verbouse_) {
         using SEID = std::pair<int, int>;
         auto comp = [](const SEID &left, const SEID &right){
             if (left.first < right.first) return true;
@@ -272,12 +293,12 @@ int generateLevels(std::vector< std::vector<sbfSElement *>>  &selements, const s
             else return false;
         };
         std::map<SEID, sbfSElement::SEStat, std::function<bool(const SEID &left, const SEID &right)>> SEStats(comp);
-        sbfSElement::update(selements.back().begin(), selements.back().end());
-//        for(auto se : selements.back())
+        sbfSElement::update(selevels_.back().begin(), selevels_.back().end());
+//        for(auto se : selevels_.back())
 //            se->updateStat();
-        for(int ctLevel = 1; ctLevel < selements.size(); ++ctLevel)
-            for(int ct = 0; ct < selements[ctLevel].size(); ++ct)
-                SEStats.insert(std::make_pair(std::make_pair(ctLevel, ct+1), selements[ctLevel][ct]->stat()));
+        for(int ctLevel = 1; ctLevel < selevels_.size(); ++ctLevel)
+            for(int ct = 0; ct < selevels_[ctLevel].size(); ++ct)
+                SEStats.insert(std::make_pair(std::make_pair(ctLevel, ct+1), selevels_[ctLevel][ct]->stat()));
         report("Level ID", "SE ID", "Nodes inner", "Nodes outer", "Num elements");
         for(const auto &rec : SEStats)
             report(rec.first.first, rec.first.second, rec.second.numInnerNodes, rec.second.numOuterNodes, rec.second.numSEelements);
