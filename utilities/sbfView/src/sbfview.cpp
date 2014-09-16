@@ -4,9 +4,9 @@
 #include "vtkCamera.h"
 #include "vtkRenderer.h"
 #include "vtkRenderWindow.h"
-#include "vtkDataSetMapper.h"
 #include "vtkProperty.h"
 #include "vtkCellData.h"
+#include "vtkPointData.h"
 #include "vtkThreshold.h"
 #include "vtkTextProperty.h"
 
@@ -34,20 +34,20 @@ void SbfView::setModel(SbfModel *model)
     renderer_->RemoveActor(actor_);
     renderer_->RemoveActor(bar_);
     model_ = model;
-    vtkSmartPointer<vtkDataSetMapper> mapper = vtkDataSetMapper::New();
-    mapper->SetInputData(model_->grid());
+    mapper_ = vtkDataSetMapper::New();
+    mapper_->SetInputData(model_->grid());
     auto range = model_->grid()->GetScalarRange();
     qDebug() << QString("Cur range is") << range[0] << range[1];
-    mapper->ImmediateModeRenderingOn();
-    mapper->SetScalarRange(range);
-    bar_->SetLookupTable(mapper->GetLookupTable());
+    mapper_->ImmediateModeRenderingOn();
+    mapper_->SetScalarRange(range);
+    bar_->SetLookupTable(mapper_->GetLookupTable());
     bar_->SetTitle("Materials");
     bar_->GetLabelTextProperty()->SetColor(0, 0, 0);
     bar_->GetTitleTextProperty()->SetColor(0, 0, 0);
     bar_->SetHeight(0.5);
     bar_->SetWidth(0.1);
     actor_ = vtkActor::New();
-    actor_->SetMapper(mapper);
+    actor_->SetMapper(mapper_);
     auto bounds = actor_->GetBounds();
     auto pos = actor_->GetPosition();
     actor_->SetPosition(pos[0]-(bounds[1] + bounds[0])/2, pos[1]-(bounds[3] + bounds[2])/2, pos[2]-(bounds[5] + bounds[4])/2);
@@ -100,4 +100,35 @@ void SbfView::setEdgeVisible(bool on)
 {
     actor_->GetProperty()->SetEdgeVisibility(on);
     update();
+}
+
+void SbfView::setArrayToMap(QString name, int component)
+{
+    auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str());
+    if(cellArray) {
+        model_->grid()->GetCellData()->SetScalars(cellArray);
+        mapper_->SetScalarModeToUseCellData();
+        cellArray->GetRange();
+        auto range = cellArray->GetRange();
+        qDebug() << QString("Cur range is") << range[0] << range[1];
+        mapper_->SetScalarRange(range);
+        bar_->SetTitle(name.toStdString().c_str());
+        bar_->SetLookupTable(mapper_->GetLookupTable());
+        actor_->SetMapper(mapper_);
+        update();
+        return;
+    }
+    auto nodeArray = model_->grid()->GetPointData()->GetArray(name.toStdString().c_str());
+    if(nodeArray) {
+        model_->grid()->GetPointData()->SetScalars(nodeArray);
+        mapper_->SetScalarModeToUsePointData();
+        auto range = nodeArray->GetRange();
+        qDebug() << QString("Cur range is") << range[0] << range[1];
+        mapper_->SetScalarRange(range);
+        bar_->SetTitle(name.toStdString().c_str());
+        bar_->SetLookupTable(mapper_->GetLookupTable());
+        actor_->SetMapper(mapper_);
+        update();
+        return;
+    }
 }

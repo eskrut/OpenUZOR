@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "sbfview.h"
 #include "sbfmodel.h"
+#include "sbftoolbar.h"
 
 class SbfViewMainWindow : public QMainWindow
 {
@@ -14,9 +15,11 @@ public:
 private:
     SbfModel *model_;
     SbfView *view_;
+    SbfToolBar *toolBar_;
     QSettings *settings_;
 
     void initializeShortCuts();
+    void initializeConnections();
 
 signals:
 

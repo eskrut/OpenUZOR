@@ -10,6 +10,7 @@
 #include "sbfMesh.h"
 
 class QSettings;
+class SbfDataModel;
 
 class SbfModel : public QObject
 {
@@ -22,10 +23,14 @@ private:
     vtkSmartPointer<vtkPoints> points_;
     vtkSmartPointer<vtkCellArray> cells_;
     sbfMesh *mesh_;
+    SbfDataModel *dataModel_;
 
 public:
+    const sbfMesh *mesh() const { return mesh_; }
     int readModel(const QString &indName, const QString &crdName, const QString &mtrName);
+    void addData(const QString &fileName);
     vtkSmartPointer<vtkUnstructuredGrid> grid() const { return grid_; }
+    SbfDataModel *dataModel() const { return dataModel_; }
 signals:
 
 public slots:

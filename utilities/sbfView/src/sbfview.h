@@ -6,6 +6,7 @@
 #include "vtkCamera.h"
 #include "vtkActor.h"
 #include "vtkScalarBarActor.h"
+#include "vtkDataSetMapper.h"
 #include <array>
 
 class SbfModel;
@@ -21,6 +22,7 @@ private:
     vtkSmartPointer<vtkCamera> cam_;
     vtkSmartPointer<vtkActor> actor_;
     vtkSmartPointer<vtkScalarBarActor> bar_;
+    vtkSmartPointer<vtkDataSetMapper> mapper_;
 
 public:
     void setModel(SbfModel *model);
@@ -35,6 +37,8 @@ public slots:
     void setViewXYZ();
     bool edgeVisible();
     void setEdgeVisible(bool on);
+
+    void setArrayToMap(QString name, int component = -1);
 };
 
 #endif // SBFVIEW_H
