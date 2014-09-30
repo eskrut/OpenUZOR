@@ -6,6 +6,11 @@
 #include <QToolBar>
 #include <QComboBox>
 
+//TEST
+#include "sbfMesh.h"
+#include "sbfNode.h"
+#include "sbfElement.h"
+
 SbfViewMainWindow::SbfViewMainWindow(QWidget *parent) :
     QMainWindow(parent)
 {
@@ -81,11 +86,33 @@ void SbfViewMainWindow::initializeShortCuts()
     Q_ASSERT(connect(toggleGrid, &QShortcut::activated, [=](){
         view_->setEdgeVisible(!view_->edgeVisible());
     }));
+
+    auto toggleTest = new QShortcut(QKeySequence("Ctrl+T"), this);
+    Q_ASSERT(connect(toggleTest, &QShortcut::activated, [=](){
+        //Make simple test mesh
+        std::unique_ptr<sbfMesh> m(sbfMesh::makeBlock(1, 2, 3, 1, 2, 3));
+        NodesData<> data("test", m.get());
+        for(int ct = 0; ct < m->numNodes(); ++ct) {
+            data.data(ct, 0) = m->node(ct).x();
+            data.data(ct, 1) = m->node(ct).y();
+            data.data(ct, 2) = m->node(ct).z();
+        }
+        for(int ct = 0; ct < m->numElements(); ++ct) {
+            m->elem(ct).setMtr(ct+1);
+        }
+        m->writeMeshToFiles();
+        data.writeToFile();
+        model_->readModel("ind.sba", "crd.sba", "mtr001.sba");
+        model_->addData("test0001.sba");
+    }));
 }
 
 void SbfViewMainWindow::initializeConnections()
 {
     Q_ASSERT(connect(toolBar_, &SbfToolBar::curentArrayChanged, [=](const QString &name){
-        view_->setArrayToMap(name);
+        view_->setArrayToMap(name, toolBar_->currentComponent());
+    }));
+    Q_ASSERT(connect(toolBar_, &SbfToolBar::curentComponentChanged, [=](const int component){
+        view_->setArrayToMap(toolBar_->currentName(), component-1);
     }));
 }

@@ -10,6 +10,9 @@
 #include "vtkThreshold.h"
 #include "vtkTextProperty.h"
 
+#include "vtkAxesActor.h"
+#include "vtkOrientationMarkerWidget.h"
+
 #include <cmath>
 
 #include <QDebug>
@@ -26,7 +29,20 @@ SbfView::SbfView(QWidget *parent) :
     renderer_->ResetCamera();
     renderer_->SetBackground(1.0, 1.0, 1.0);
 
-    GetRenderWindow()->AddRenderer(renderer_);
+    vtkRenderWindow *renWin = GetRenderWindow();
+    renWin->AddRenderer(renderer_);
+
+    auto axesWidget = vtkOrientationMarkerWidget::New();
+    axesWidget->SetDefaultRenderer( renderer_ );
+    vtkRenderWindowInteractor* rwi = renderer_->GetRenderWindow()->GetInteractor();
+    axesWidget->SetInteractor( rwi );
+
+    vtkAxesActor* axes = vtkAxesActor::New();
+    axesWidget->SetOrientationMarker ( axes );
+    axes->Delete();
+
+    axesWidget->SetEnabled(1);
+    axesWidget->InteractiveOn();
 }
 
 void SbfView::setModel(SbfModel *model)
@@ -35,7 +51,10 @@ void SbfView::setModel(SbfModel *model)
     renderer_->RemoveActor(bar_);
     model_ = model;
     mapper_ = vtkDataSetMapper::New();
+    lt_ = vtkLookupTable::New();
+    lt_->Build();
     mapper_->SetInputData(model_->grid());
+    mapper_->SetLookupTable(lt_);
     auto range = model_->grid()->GetScalarRange();
     qDebug() << QString("Cur range is") << range[0] << range[1];
     mapper_->ImmediateModeRenderingOn();
@@ -104,13 +123,13 @@ void SbfView::setEdgeVisible(bool on)
 
 void SbfView::setArrayToMap(QString name, int component)
 {
-    auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str());
+    int arrayID = -1;
+    auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str(), arrayID);
     if(cellArray) {
-        model_->grid()->GetCellData()->SetScalars(cellArray);
+//        model_->grid()->GetCellData()->SetScalars(cellArray);
         mapper_->SetScalarModeToUseCellData();
-        cellArray->GetRange();
-        auto range = cellArray->GetRange();
-        qDebug() << QString("Cur range is") << range[0] << range[1];
+        auto range = cellArray->GetRange(component);
+        qDebug() << QString("Cur cell range is") << range[0] << range[1];
         mapper_->SetScalarRange(range);
         bar_->SetTitle(name.toStdString().c_str());
         bar_->SetLookupTable(mapper_->GetLookupTable());
@@ -118,15 +137,23 @@ void SbfView::setArrayToMap(QString name, int component)
         update();
         return;
     }
-    auto nodeArray = model_->grid()->GetPointData()->GetArray(name.toStdString().c_str());
+    auto nodeArray = model_->grid()->GetPointData()->GetArray(name.toStdString().c_str(), arrayID);
     if(nodeArray) {
-        model_->grid()->GetPointData()->SetScalars(nodeArray);
-        mapper_->SetScalarModeToUsePointData();
-        auto range = nodeArray->GetRange();
-        qDebug() << QString("Cur range is") << range[0] << range[1];
+        mapper_->SetScalarMode(VTK_SCALAR_MODE_USE_POINT_FIELD_DATA);
+        auto range = nodeArray->GetRange(component);
+        qDebug() << QString("Cur node range is") << range[0] << range[1];
         mapper_->SetScalarRange(range);
+        lt_->SetTableRange(range);
+        lt_->Build();
+        mapper_->SelectColorArray(arrayID);
+        if(component == -1)
+            mapper_->GetLookupTable()->SetVectorMode(vtkScalarsToColors::MAGNITUDE);
+        else {
+            mapper_->GetLookupTable()->SetVectorMode(vtkScalarsToColors::COMPONENT);
+            mapper_->GetLookupTable()->SetVectorComponent(component);
+        }
         bar_->SetTitle(name.toStdString().c_str());
-        bar_->SetLookupTable(mapper_->GetLookupTable());
+        bar_->SetLookupTable(lt_);
         actor_->SetMapper(mapper_);
         update();
         return;

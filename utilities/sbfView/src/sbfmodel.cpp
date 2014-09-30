@@ -134,10 +134,27 @@ void SbfModel::addData(const QString &fileName)
     catch(...) {
     }
     try {
-        SolutionBundle<float> *Fsol = new SolutionBundle<float>(fileName.toStdString(), mesh_->numNodes());
+        const int numArrays = 20;
+        SolutionBundle<float, numArrays> *Fsol = new SolutionBundle<float>(fileName.toStdString(), mesh_->numNodes());
         if(Fsol->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
             throw std::runtime_error("not this type");
         mesh_->addSolutionBundle(Fsol);
+        for(int ct = 0; ct < numArrays; ++ct) {
+            auto array = Fsol->array(ct);
+            if(array) {
+                vtkFloatArray *data(vtkFloatArray::New());
+                data->SetName((baseName+"/"+Fsol->name(ct)).c_str());
+                data->SetNumberOfComponents(1);
+                data->SetNumberOfTuples(numNodes);
+                for(int ctNode = 0; ctNode < numNodes; ++ctNode)
+                    data->SetComponent(ctNode, 1, array->data(ctNode, 1));
+                grid_->GetPointData()->AddArray(data);
+                auto item = new SbfDataItem(data->GetName(), SbfDataItem::FloatScalar, SbfDataItem::NodeData);
+                item->setData(qVariantFromValue(static_cast<void*>(array)), SbfDataItem::SbfPointerRequest);
+                item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
+                dataModel_->invisibleRootItem()->appendRow(item);
+            }
+        }
         return;
     }
     catch(...) {
@@ -147,6 +164,7 @@ void SbfModel::addData(const QString &fileName)
         if(Dsol->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
             throw std::runtime_error("not this type");
         mesh_->addSolutionBundle(Dsol);
+
         return;
     }
     catch(...) {

@@ -7,6 +7,7 @@
 #include "vtkActor.h"
 #include "vtkScalarBarActor.h"
 #include "vtkDataSetMapper.h"
+#include "vtkLookupTable.h"
 #include <array>
 
 class SbfModel;
@@ -22,6 +23,7 @@ private:
     vtkSmartPointer<vtkCamera> cam_;
     vtkSmartPointer<vtkActor> actor_;
     vtkSmartPointer<vtkScalarBarActor> bar_;
+    vtkSmartPointer<vtkLookupTable> lt_;
     vtkSmartPointer<vtkDataSetMapper> mapper_;
 
 public:
