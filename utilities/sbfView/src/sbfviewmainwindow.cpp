@@ -87,6 +87,23 @@ void SbfViewMainWindow::initializeShortCuts()
         view_->setEdgeVisible(!view_->edgeVisible());
     }));
 
+    auto rotObjectX = new QShortcut(QKeySequence("Down"), this);
+    Q_ASSERT(connect(rotObjectX, &QShortcut::activated, [=](){
+        view_->rotateViewScreenX(settings_->value("defaultRot", 10).toDouble());
+    }));
+    auto rotObjectXm = new QShortcut(QKeySequence("Up"), this);
+    Q_ASSERT(connect(rotObjectXm, &QShortcut::activated, [=](){
+        view_->rotateViewScreenX(-settings_->value("defaultRot", 10).toDouble());
+    }));
+    auto rotObjectY = new QShortcut(QKeySequence("Right"), this);
+    Q_ASSERT(connect(rotObjectY, &QShortcut::activated, [=](){
+        view_->rotateViewScreenY(settings_->value("defaultRot", 10).toDouble());
+    }));
+    auto rotObjectYm = new QShortcut(QKeySequence("Left"), this);
+    Q_ASSERT(connect(rotObjectYm, &QShortcut::activated, [=](){
+        view_->rotateViewScreenY(-settings_->value("defaultRot", 10).toDouble());
+    }));
+
     auto toggleTest = new QShortcut(QKeySequence("Ctrl+T"), this);
     Q_ASSERT(connect(toggleTest, &QShortcut::activated, [=](){
         //Make simple test mesh

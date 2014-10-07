@@ -37,6 +37,9 @@ public slots:
     void setViewYZ();
     void setViewZX();
     void setViewXYZ();
+    void rotateView(const std::array<double, 3> &axis, double angle);
+    void rotateViewScreenX(double angle);
+    void rotateViewScreenY(double angle);
     bool edgeVisible();
     void setEdgeVisible(bool on);
 

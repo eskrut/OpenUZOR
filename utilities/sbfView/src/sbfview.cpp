@@ -9,6 +9,8 @@
 #include "vtkPointData.h"
 #include "vtkThreshold.h"
 #include "vtkTextProperty.h"
+#include "vtkTransform.h"
+#include "vtkMath.h"
 
 #include "vtkAxesActor.h"
 #include "vtkOrientationMarkerWidget.h"
@@ -108,6 +110,50 @@ void SbfView::setViewZX()
 void SbfView::setViewXYZ()
 {
     setView({1, 1, 1}, {-std::sqrt(3), -std::sqrt(3), 2*std::sqrt(3)});
+}
+
+void SbfView::rotateView(const std::array<double, 3> &axis, double angle)
+{
+    std::array<double, 3> pos, up;
+    cam_->GetPosition(pos.data());
+    cam_->GetViewUp(up.data());
+    vtkSmartPointer<vtkTransform> trans(vtkTransform::New());
+    trans->RotateWXYZ(angle, axis.data());
+    trans->TransformVector(pos.data(), pos.data());
+    trans->TransformVector(up.data(), up.data());
+    cam_->SetPosition(pos.data());
+    cam_->SetViewUp(up.data());
+    renderer_->ResetCamera();
+    update();
+}
+
+void SbfView::rotateViewScreenX(double angle)
+{
+    std::array<double, 3> pos, up, rot;
+    cam_->GetPosition(pos.data());
+    cam_->GetViewUp(up.data());
+    vtkMath::Cross(pos.data(), up.data(), rot.data());
+    vtkSmartPointer<vtkTransform> trans(vtkTransform::New());
+    trans->RotateWXYZ(angle, rot.data());
+    trans->TransformVector(pos.data(), pos.data());
+    trans->TransformVector(up.data(), up.data());
+    cam_->SetPosition(pos.data());
+    cam_->SetViewUp(up.data());
+    renderer_->ResetCamera();
+    update();
+}
+
+void SbfView::rotateViewScreenY(double angle)
+{
+    std::array<double, 3> pos, up;
+    cam_->GetPosition(pos.data());
+    cam_->GetViewUp(up.data());
+    vtkSmartPointer<vtkTransform> trans(vtkTransform::New());
+    trans->RotateWXYZ(angle, up.data());
+    trans->TransformVector(pos.data(), pos.data());
+    cam_->SetPosition(pos.data());
+    renderer_->ResetCamera();
+    update();
 }
 
 bool SbfView::edgeVisible()
