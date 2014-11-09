@@ -9,7 +9,8 @@ SEBuilder::SEBuilder(const sbfMesh *mesh, const bool targetCut) :
     targetCut_(targetCut),
     numIterations_(100),
     numCuts_(3),
-    seed_(false)
+    seed_(false),
+    inversePartition_(false)
 {
     seLevels_.setMesh(mesh_);
 }
@@ -35,7 +36,10 @@ void SEBuilder::make(const std::vector<int> &numTargetByLayers, const std::vecto
     for(int ct = 0; ct < numElems; ct++)
         selevels_[0][ct]->setRegElemIndexes({ct});
 
-    generateLevels(numTargetByLayers, maxImbalanceByLayer);
+    if( !inversePartition_ )
+        generateLevels(numTargetByLayers, maxImbalanceByLayer);
+    else
+        generateLevelsInverce(numTargetByLayers, maxImbalanceByLayer);
 }
 
 void SEBuilder::write(const char *levelBaseName)
@@ -51,18 +55,25 @@ void SEBuilder::write(const char *levelBaseName)
     }
 }
 
-int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer){
-    int numRegElems = selevels_[0].size();
-    std::vector <double> facesWeigth;
-    std::vector <int> facesOwners;
+void SEBuilder::processFacesWeigthOwners(int numRegElems, std::vector<int> &facesOwners, std::vector<double> &facesWeigth)
+{
+    std::vector<int> regElems;
+    regElems.reserve(numRegElems);
+    for(int elemID = 0; elemID < numRegElems; elemID++)
+        regElems.push_back(elemID);
+    processFacesWeigthOwners(regElems, facesOwners, facesWeigth);
+}
+
+void SEBuilder::processFacesWeigthOwners(const std::vector<int> &regElems, std::vector<int> &facesOwners, std::vector<double> &facesWeigth)
+{
     std::vector <double> randoms;
     randoms.resize(50);
     for(size_t ct = 0; ct < randoms.size(); ct++) randoms[ct] = ((double)rand())/RAND_MAX;
 
-    facesWeigth.reserve(numRegElems*50);
-    facesOwners.reserve(numRegElems*50);
+    facesWeigth.reserve(regElems.size()*50);
+    facesOwners.reserve(regElems.size()*50);
 
-    for(int elemID = 0; elemID < numRegElems; elemID++){//Loop on elements
+    for(auto elemID : regElems){//Loop on elements
         sbfElement *elem = const_cast<sbfMesh*>(mesh_)->elemPtr(elemID);
 
         double faceWeigth;
@@ -83,7 +94,138 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
 
     }//Loop on elements
 
-    quickAssociatedSort<double, int>(&facesWeigth[0], &facesOwners[0], 0, facesWeigth.size()-1);
+    quickAssociatedSort<double, int>(facesWeigth.data(), facesOwners.data(), 0, facesWeigth.size()-1);
+}
+
+void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance, const std::vector<double> &globalFacesWeigth,
+const std::vector<int> &globalFacesOwners)
+{
+    std::vector<double> localFacesWeigth;
+    std::vector<int> localFacesOwners;
+    auto regElements = sElem->regElemIndexes();
+    localFacesWeigth.reserve(globalFacesWeigth.size());
+    localFacesOwners.reserve(globalFacesOwners.size());
+//    for (int ct = 0; ct < globalFacesOwners.size(); ++ct) {
+//        if (std::find(regElements.begin(), regElements.end(), globalFacesOwners[ct]) != regElements.end()) {
+//            localFacesWeigth.push_back(globalFacesWeigth[ct]);
+//            localFacesOwners.push_back(globalFacesOwners[ct]);
+//        }
+//    }
+    processFacesWeigthOwners(regElements, localFacesOwners, localFacesWeigth);
+    std::map<int, int> ownerMap, regElemMap;
+    for(size_t ct = 0; ct < regElements.size(); ++ct) {
+        ownerMap[regElements[ct]] = ct;
+        regElemMap[ct] = regElements[ct];
+    }
+
+    int vertnbr, edgenbr;
+    vertnbr = regElements.size();
+    edgenbr = 0;
+
+    std::vector< std::list <int> > elemNeibour;
+    elemNeibour.resize(vertnbr);
+
+    auto facesWeigthIt = localFacesWeigth.begin();
+    auto facesOwnersIt = localFacesOwners.begin();
+    auto facesWeigthEndM1 = localFacesWeigth.end() - 1;
+    for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
+        if(*facesWeigthIt == *(facesWeigthIt+1)){
+            auto owner0 = ownerMap[*facesOwnersIt]; auto owner1 = ownerMap[*(facesOwnersIt+1)];
+            elemNeibour[owner1].push_back(owner0);
+            elemNeibour[owner0].push_back(owner1);
+            facesWeigthIt++; facesOwnersIt++;
+        }
+    }
+    for(auto &rec : elemNeibour) if(rec.size() == 0) throw std::runtime_error("fail to construct neibours");
+
+    std::vector<idx_t> verttab, edgetab, edlotab, parttab;
+    verttab.resize(vertnbr+1);
+    parttab.resize(vertnbr, 0);
+    int count = 0;
+    verttab[0] = count;
+    for(size_t ct = 0; ct < elemNeibour.size(); ct++){
+        std::list<int> elemNeibourAll, elemNeibourUnique;
+        for(auto it = elemNeibour[ct].begin(); it != elemNeibour[ct].end(); it++)
+            elemNeibourAll.push_back(*it);
+        elemNeibourAll.sort();
+        elemNeibourUnique = elemNeibourAll;
+        elemNeibourUnique.unique();
+        auto elemNeibourUniqueBegin = elemNeibourUnique.begin();
+        auto elemNeibourUniqueEnd = elemNeibourUnique.end();
+        auto elemNeibourAllBegin = elemNeibourAll.begin();
+        auto elemNeibourAllEnd = elemNeibourAll.end();
+        auto itA = elemNeibourAllBegin;
+        for(auto itU = elemNeibourUniqueBegin; itU != elemNeibourUniqueEnd; itU++)
+        {
+            if(static_cast<int>(ct) != *itU){
+                int numAcuarence = 0;
+                while(*itA == *itU && itA != elemNeibourAllEnd){
+                    numAcuarence++;
+                    itA++;
+                }
+                edgetab.push_back(*itU);
+                edlotab.push_back(numAcuarence);
+                count++;
+                edgenbr++;
+            }
+        }
+        verttab[ct+1] = count;
+    }
+
+    if(nParts > 1) {
+        idx_t nvtxs = vertnbr, ncon = 1, nparts = nParts, objval;
+        idx_t options[METIS_NOPTIONS];
+        METIS_SetDefaultOptions(options);
+        if (targetCut_)
+            options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+        else
+            options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_VOL;
+        options[METIS_OPTION_NUMBERING] = 0;
+        options[METIS_OPTION_NITER] = numIterations_;
+        options[METIS_OPTION_NCUTS] = numCuts_;
+        options[METIS_OPTION_MINCONN] = 1;
+        if(maxImbalance > 0)
+            options[METIS_OPTION_UFACTOR] = static_cast<int>((maxImbalance-1)*1000);
+        options[METIS_OPTION_CONTIG] = 1; //Force contiguous partitions
+        if (seed_)
+            options[METIS_OPTION_SEED] = time(nullptr);
+        int rez = METIS_PartGraphKway(&nvtxs,
+                                      &ncon,
+                                      verttab.data(),
+                                      edgetab.data(),
+                                      /*idx_t *vwgt*/nullptr,
+                                      /*idx_t *vsize*/nullptr,
+                                      /*idx_t *adjwgt*/nullptr,
+                                      &nparts,
+                                      /*real_t *tpwgts*/nullptr,
+                                      /*real_t *ubvec*/nullptr,
+                                      options,
+                                      &objval,
+                                      parttab.data()
+                                      );
+        if ( rez != METIS_OK ) throw std::runtime_error("Metis runtime failed :(");
+    }
+
+    std::vector<std::vector<int>> childsRegElements;
+    childsRegElements.resize(nParts);
+    for(size_t ct = 0; ct < parttab.size(); ++ct)
+        childsRegElements[parttab[ct]].push_back(regElements[ct]);
+
+    std::vector<sbfSElement*> childSEs;
+    for(int ct = 0; ct < nParts; ++ct){
+        childSEs.push_back(new sbfSElement(sElem->mesh()));
+        childSEs.back()->setRegElemIndexes(childsRegElements[ct]);
+        childSEs.back()->setParent(sElem);
+    }
+    sElem->setRegElemIndexes(std::vector<int>());
+    sElem->setChildrens(childSEs);
+}
+
+int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer){
+    int numRegElems = selevels_[0].size();
+    std::vector <double> facesWeigth;
+    std::vector <int> facesOwners;
+    processFacesWeigthOwners(numRegElems, facesOwners, facesWeigth);
 
     if ( verbouse_ ) std::cout << "sort done" << std::endl;
 
@@ -304,4 +446,50 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
             report(rec.first.first, rec.first.second, rec.second.numInnerNodes, rec.second.numOuterNodes, rec.second.numSEelements);
     }
     return 0;
+}
+
+int SEBuilder::generateLevelsInverce(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer)
+{
+    int numRegElems = selevels_[0].size();
+    std::vector <double> facesWeigth;
+    std::vector <int> facesOwners;
+    processFacesWeigthOwners(numRegElems, facesOwners, facesWeigth);
+
+    if ( verbouse_ ) std::cout << "sort done" << std::endl;
+
+    //Construct top-level fake SElement
+    auto fakeSE = new sbfSElement(mesh_);
+    std::vector<int> elemsIDs;
+    elemsIDs.resize(numRegElems);
+    for(size_t ct = 0; ct < numRegElems; ++ct) elemsIDs[ct] = ct;
+    fakeSE->setRegElemIndexes(elemsIDs);
+
+    std::vector<sbfSElement*> curSElements;
+    curSElements.push_back(fakeSE);
+
+    for(int ctLevel = numTargetByLayers.size()-1; ctLevel >= 0; --ctLevel) {
+        int numTargetInThisLevel = numTargetByLayers[ctLevel];
+        int numAttached = 0;
+        std::vector<int> numParts;
+        std::vector<sbfSElement*> nextSElements;
+        double maxLayerImbalance = maxImbalanceByLayer.back();
+        if( ctLevel < maxImbalanceByLayer.size() ) maxLayerImbalance = maxImbalanceByLayer.at(ctLevel);
+        for(int ct = 0; ct < curSElements.size(); ++ct) {
+            numParts.push_back((numTargetInThisLevel - numAttached)/(curSElements.size()-ct));
+            numAttached += numParts.back();
+            partSE(curSElements[ct], numParts.back(), maxLayerImbalance, facesWeigth, facesOwners);
+            for(int ctChild = 0; ctChild < curSElements[ct]->numSElements(); ++ctChild )
+                nextSElements.push_back(curSElements[ct]->children(ctChild));
+        }
+        for (int ctSE = 0; ctSE < nextSElements.size(); ++ctSE) {
+            selevels_[ctLevel+1][ctSE] = nextSElements[ctSE];
+            nextSElements[ctSE]->setIndex(ctSE);
+        }
+        curSElements = nextSElements;
+        if ( verbouse_ ) std::cout << "Level " << ctLevel+1 << " done" << std::endl;
+    }
+    for(auto se : curSElements) {
+        auto regEls = se->regElemIndexes();
+        for(auto el : regEls) selevels_[0][el]->setParent(se);
+    }
 }
