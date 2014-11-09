@@ -97,20 +97,13 @@ void SEBuilder::processFacesWeigthOwners(const std::vector<int> &regElems, std::
     quickAssociatedSort<double, int>(facesWeigth.data(), facesOwners.data(), 0, facesWeigth.size()-1);
 }
 
-void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance, const std::vector<double> &globalFacesWeigth,
-const std::vector<int> &globalFacesOwners)
+void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance)
 {
     std::vector<double> localFacesWeigth;
     std::vector<int> localFacesOwners;
     auto regElements = sElem->regElemIndexes();
-    localFacesWeigth.reserve(globalFacesWeigth.size());
-    localFacesOwners.reserve(globalFacesOwners.size());
-//    for (int ct = 0; ct < globalFacesOwners.size(); ++ct) {
-//        if (std::find(regElements.begin(), regElements.end(), globalFacesOwners[ct]) != regElements.end()) {
-//            localFacesWeigth.push_back(globalFacesWeigth[ct]);
-//            localFacesOwners.push_back(globalFacesOwners[ct]);
-//        }
-//    }
+    localFacesWeigth.reserve(regElements.size()*20);
+    localFacesOwners.reserve(regElements.size()*20);
     processFacesWeigthOwners(regElements, localFacesOwners, localFacesWeigth);
     std::map<int, int> ownerMap, regElemMap;
     for(size_t ct = 0; ct < regElements.size(); ++ct) {
@@ -451,11 +444,6 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
 int SEBuilder::generateLevelsInverce(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer)
 {
     int numRegElems = selevels_[0].size();
-    std::vector <double> facesWeigth;
-    std::vector <int> facesOwners;
-    processFacesWeigthOwners(numRegElems, facesOwners, facesWeigth);
-
-    if ( verbouse_ ) std::cout << "sort done" << std::endl;
 
     //Construct top-level fake SElement
     auto fakeSE = new sbfSElement(mesh_);
@@ -477,7 +465,7 @@ int SEBuilder::generateLevelsInverce(const std::vector<int> &numTargetByLayers, 
         for(int ct = 0; ct < curSElements.size(); ++ct) {
             numParts.push_back((numTargetInThisLevel - numAttached)/(curSElements.size()-ct));
             numAttached += numParts.back();
-            partSE(curSElements[ct], numParts.back(), maxLayerImbalance, facesWeigth, facesOwners);
+            partSE(curSElements[ct], numParts.back(), maxLayerImbalance);
             for(int ctChild = 0; ctChild < curSElements[ct]->numSElements(); ++ctChild )
                 nextSElements.push_back(curSElements[ct]->children(ctChild));
         }

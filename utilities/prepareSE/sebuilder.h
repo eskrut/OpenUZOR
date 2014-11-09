@@ -36,7 +36,7 @@ public:
 private:
     void processFacesWeigthOwners(int numRegElems, std::vector<int> &facesOwners, std::vector<double> &facesWeigth);
     void processFacesWeigthOwners(const std::vector<int> &regElems, std::vector<int> &facesOwners, std::vector<double> &facesWeigth);
-    void partSE(sbfSElement *sElem, int nParts, double maxImbalance, const std::vector<double> &globalFacesWeigth, const std::vector<int> &globalFacesOwners);
+    void partSE(sbfSElement *sElem, int nParts, double maxImbalance);
     int generateLevels(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer);
     int generateLevelsInverce(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer);
     //TODO add get partitioning statistics
