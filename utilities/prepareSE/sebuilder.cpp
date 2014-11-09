@@ -44,6 +44,8 @@ void SEBuilder::make(const std::vector<int> &numTargetByLayers, const std::vecto
 
 void SEBuilder::write(const char *levelBaseName)
 {
+    const int numElems = mesh_->numElements();
+    NodesData<int, 1> levelMtrs((levelBaseName + std::string("Mtr")).c_str(), numElems);
     for(size_t ct = 0; ct < selevels_.size()-1; ct++){
         std::cout << "Level " << ct+1 << " contains " << selevels_[ct+1].size() << std::endl;
         sbfSELevel level;
@@ -52,6 +54,14 @@ void SEBuilder::write(const char *levelBaseName)
         for(size_t ctSE = 0; ctSE < selevels_[ct].size(); ctSE++) level.setIndex(ctSE, selevels_[ct][ctSE]->parent()->index());
 
         level.writeToFile(levelBaseName, ct+1);
+
+        for(int ctElem = 0; ctElem < mesh_->numElements(); ++ctElem) {
+            auto se = selevels_[0][ctElem];
+            for(int ctLevel = 0; ctLevel <= ct; ++ctLevel)
+                se = se->parent();
+            levelMtrs.data()[ctElem] = se->index() + 1;
+        }
+        levelMtrs.writeToFile<int>();
     }
 }
 
