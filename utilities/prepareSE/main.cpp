@@ -18,6 +18,7 @@ int main(int argc, char ** argv)
     bool targetCut = true;
     int numIterations;
     bool useSeed = false;
+    bool useInversePartition = false;
     int numCut;
     desc.add_options()
                     ("help,h", "print help message")
@@ -32,6 +33,7 @@ int main(int argc, char ** argv)
                     ("vol", "Minimize number of elements diabalance instead of cut minimization")
                     ("max-iterations", po::value<int>(&numIterations)->default_value(1000), "Maximum iterations in graph partitioning algorythm")
                     ("seed", "Use random seed")
+                    ("inverse", "Use inverse partition algorithm")
                     ("num-cuts", po::value<int>(&numCut)->default_value(3), "Number of cuts to try partitioning")
                     ;
     po::variables_map vm;
@@ -45,6 +47,8 @@ int main(int argc, char ** argv)
     if (vm.count("vol")) targetCut = false;
 
     if (vm.count("seed")) useSeed = true;
+
+    if (vm.count("inverse")) useInversePartition = true;
 
     //extract number of SE by layers from cmd string
     std::stringstream sstr(numTargetByLayersStr);
@@ -74,6 +78,7 @@ int main(int argc, char ** argv)
     std::unique_ptr<SEBuilder> pBuilder(new SEBuilder(pMesh.get(), targetCut));
 
     pBuilder->setUseSeed(useSeed);
+    pBuilder->setUseInversePartition(useInversePartition);
     pBuilder->setVerbouse(verbouse);
     pBuilder->setNumIterations(numIterations);
     pBuilder->setNumCuts(numCut);
