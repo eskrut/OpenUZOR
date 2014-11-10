@@ -1,10 +1,16 @@
 option(BUILD_PREPARE_SE "Build prepareSE project" ON)
+option(BUILD_QPREPARE_SE "Build qPrepareSE project" ON)
 option(BUILD_SBFTOVTK "Build sbfToVtk project" ON)
 option(BUILD_QSBFTOVTK "Build qSbfToVtk project" ON)
 
 if(BUILD_PREPARE_SE)
     message("Configuring prepareSE")
     add_subdirectory(prepareSE)
+endif()
+
+if(BUILD_QPREPARE_SE)
+    message("Configuring qPrepareSE")
+    add_subdirectory(qPrepareSE)
 endif()
 
 if(BUILD_SBFTOVTK)
