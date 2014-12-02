@@ -7,7 +7,8 @@ class SbfDataItem : public QStandardItem
 {
 public:
     enum Type {
-        Material = QStandardItem::UserType + 1,
+        None = QStandardItem::UserType + 1,
+        Material,
         SELevels,
         FloatVector,
         DoubleVector,

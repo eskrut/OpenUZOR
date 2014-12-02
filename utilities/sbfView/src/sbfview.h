@@ -7,7 +7,9 @@
 #include "vtkActor.h"
 #include "vtkScalarBarActor.h"
 #include "vtkDataSetMapper.h"
+#include "vtkWarpVector.h"
 #include "vtkLookupTable.h"
+#include "vtkGeometryFilter.h"
 #include <array>
 
 class SbfModel;
@@ -24,7 +26,9 @@ private:
     vtkSmartPointer<vtkActor> actor_;
     vtkSmartPointer<vtkScalarBarActor> bar_;
     vtkSmartPointer<vtkLookupTable> lt_;
+    vtkSmartPointer<vtkLookupTable> matLt_;
     vtkSmartPointer<vtkDataSetMapper> mapper_;
+    vtkSmartPointer<vtkWarpVector> warp_;
 
 public:
     void setModel(SbfModel *model);
@@ -43,7 +47,12 @@ public slots:
     bool edgeVisible();
     void setEdgeVisible(bool on);
 
+    double warpFactor() const;
+    void setWarpFactor(double factor);
+
     void setArrayToMap(QString name, int component = -1);
+private:
+    void fillMtrLt(vtkDataArray *array);
 };
 
 #endif // SBFVIEW_H

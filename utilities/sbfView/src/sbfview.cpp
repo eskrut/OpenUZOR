@@ -11,13 +11,19 @@
 #include "vtkTextProperty.h"
 #include "vtkTransform.h"
 #include "vtkMath.h"
+#include "vtkPolyDataMapper.h"
+#include "vtkGeometryFilter.h"
 
 #include "vtkAxesActor.h"
 #include "vtkOrientationMarkerWidget.h"
+#include "vtkLight.h"
+#include "vtkLightCollection.h"
+#include "vtkLightKit.h"
 
 #include <cmath>
 
 #include <QDebug>
+#include <QColor>
 
 SbfView::SbfView(QWidget *parent) :
     QVTKWidget(parent)
@@ -53,8 +59,13 @@ void SbfView::setModel(SbfModel *model)
     renderer_->RemoveActor(bar_);
     model_ = model;
     mapper_ = vtkDataSetMapper::New();
+    warp_ = vtkWarpVector::New();
     lt_ = vtkLookupTable::New();
     lt_->Build();
+    matLt_ = vtkLookupTable::New();
+    matLt_->Build();
+    warp_->SetInputData(model_->grid());
+    warp_->SetScaleFactor(1);
     mapper_->SetInputData(model_->grid());
     mapper_->SetLookupTable(lt_);
     auto range = model_->grid()->GetScalarRange();
@@ -72,11 +83,30 @@ void SbfView::setModel(SbfModel *model)
     auto bounds = actor_->GetBounds();
     auto pos = actor_->GetPosition();
     actor_->SetPosition(pos[0]-(bounds[1] + bounds[0])/2, pos[1]-(bounds[3] + bounds[2])/2, pos[2]-(bounds[5] + bounds[4])/2);
-    bounds = actor_->GetBounds();
     actor_->SetOrigin(0, 0, 0);
     renderer_->AddActor(actor_);
     renderer_->AddActor(bar_);
     setViewXYZ();
+    setArrayToMap(QString::fromStdString("materials"), -1);
+
+    update();
+
+//    qDebug() << renderer_->GetLights()->GetNumberOfItems();
+
+//    vtkLight *light = vtkLight::New();
+//    light->SetLightTypeToSceneLight();
+//    light->SetPosition(10, 10, 10);
+////    light->SetPositional(true); // required for vtkLightActor below
+//    light->SetConeAngle(10);
+//    light->SetFocalPoint(0, 0, 0);
+//    light->SetDiffuseColor(1,1,1);
+//    light->SetAmbientColor(1,1,1);
+//    light->SetSpecularColor(1,1,1);
+
+//    renderer_->AddLight(light);
+    vtkLightKit *lightKit = vtkLightKit::New();
+    lightKit->AddLightsToRenderer(renderer_);
+    lightKit->SetKeyLightIntensity(0.8);
 }
 
 void SbfView::resetView()
@@ -167,15 +197,32 @@ void SbfView::setEdgeVisible(bool on)
     update();
 }
 
+double SbfView::warpFactor() const
+{
+    return warp_->GetScaleFactor();
+}
+
+void SbfView::setWarpFactor(double factor)
+{
+    warp_->SetScaleFactor(factor);
+    warp_->Update();
+}
+
 void SbfView::setArrayToMap(QString name, int component)
 {
     int arrayID = -1;
     auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str(), arrayID);
     if(cellArray) {
-//        model_->grid()->GetCellData()->SetScalars(cellArray);
+        model_->grid()->GetCellData()->SetScalars(cellArray);
+        mapper_->SetInputData(model_->grid());
         mapper_->SetScalarModeToUseCellData();
+        mapper_->SelectColorArray(arrayID);
         auto range = cellArray->GetRange(component);
         qDebug() << QString("Cur cell range is") << range[0] << range[1];
+        if(cellArray->GetDataType() == VTK_INT) {
+            fillMtrLt(cellArray);
+            mapper_->SetLookupTable(matLt_);
+        }
         mapper_->SetScalarRange(range);
         bar_->SetTitle(name.toStdString().c_str());
         bar_->SetLookupTable(mapper_->GetLookupTable());
@@ -189,6 +236,7 @@ void SbfView::setArrayToMap(QString name, int component)
         auto range = nodeArray->GetRange(component);
         qDebug() << QString("Cur node range is") << range[0] << range[1];
         mapper_->SetScalarRange(range);
+        mapper_->SetLookupTable(nodeArray->GetLookupTable());
         lt_->SetTableRange(range);
         lt_->Build();
         mapper_->SelectColorArray(arrayID);
@@ -201,7 +249,30 @@ void SbfView::setArrayToMap(QString name, int component)
         bar_->SetTitle(name.toStdString().c_str());
         bar_->SetLookupTable(lt_);
         actor_->SetMapper(mapper_);
+        if(nodeArray->GetNumberOfComponents() == 3) {
+            model_->grid()->GetPointData()->SetActiveVectors(name.toStdString().c_str());
+            warp_->SetInputData(model_->grid());
+            warp_->SetScaleFactor(1000000000);
+            warp_->Update();
+            mapper_->SetInputConnection(warp_->GetOutputPort());
+        }
+        else
+            mapper_->SetInputData(model_->grid());
         update();
         return;
     }
+}
+
+void SbfView::fillMtrLt(vtkDataArray *array)
+{
+    matLt_ = vtkLookupTable::New();
+    auto range = array->GetRange(0);
+    matLt_->SetNumberOfTableValues(range[1] - range[0] + 2);
+    for(int ct = 0/*range[0]*/; ct <= range[1]; ++ct ){
+        QColor c = QColor::fromHsv(static_cast<int>(60+57.6*ct + 1.173*ct*ct + 0.027*ct*ct*ct)%360, 255/*230+(25+ct*7)%25*/, 255/*150+(104+ct*19)%105*/);
+        matLt_->SetTableValue(ct, c.redF(), c.greenF(), c.blueF());
+//        matLt_->SetTableValue(ct, (rand()%256)/256.0, (rand()%256)/256.0, (rand()%256)/256.0);
+        matLt_->SetAnnotation(ct, vtkStdString(std::to_string(ct)));
+    }
+    matLt_->Build();
 }

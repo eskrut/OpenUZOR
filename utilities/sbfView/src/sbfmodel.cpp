@@ -79,6 +79,8 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
         grid_->GetCellData()->AddArray(mtrData);
         grid_->GetCellData()->SetScalars(mtrData);
 
+//        SbfDataItem *noneItem = new SbfDataItem("None", SbfDataItem::None, SbfDataItem::NodeData);
+//        dataModel_->invisibleRootItem()->appendRow(noneItem);
         SbfDataItem *mtrDataItem = new SbfDataItem(mtrData->GetName(), SbfDataItem::Material, SbfDataItem::CellData);
         dataModel_->invisibleRootItem()->appendRow(mtrDataItem);
     }
