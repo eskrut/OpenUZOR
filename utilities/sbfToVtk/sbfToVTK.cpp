@@ -10,7 +10,7 @@
 #include <vtkXMLReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
 #include <vtkXMLUnstructuredGridWriter.h>
-//#include <vtkXMLPUnstructuredGridReader.h>
+#include <vtkXMLPUnstructuredGridReader.h>
 //#include <vtkXMLPUnstructuredGridWriter.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
