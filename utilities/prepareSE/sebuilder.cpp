@@ -10,7 +10,8 @@ SEBuilder::SEBuilder(const sbfMesh *mesh, const bool targetCut) :
     numIterations_(100),
     numCuts_(3),
     seed_(false),
-    inversePartition_(false)
+    inversePartition_(false),
+    connectByFaces_(true)
 {
     seLevels_.setMesh(mesh_);
 }
@@ -88,19 +89,27 @@ void SEBuilder::processFacesWeigthOwners(const std::vector<int> &regElems, std::
 
         double faceWeigth;
         int facesOwner = elemID;
-        std::list<int> inds;
-        int count;
+        if(connectByFaces_) {
+            std::list<int> inds;
+            int count;
 
-        std::vector< std::vector<int> > facesNodesIndexes = elem->facesNodesIndexes();
-        for(auto itFace = facesNodesIndexes.begin(); itFace != facesNodesIndexes.end(); itFace++){//Loop on faces
-            inds.clear();
-            for(auto itIndex = (*itFace).begin(); itIndex != (*itFace).end(); itIndex++)
-                inds.push_back(*itIndex);
-            inds.sort();
-            count = 0; faceWeigth = 0; for(auto it = inds.begin(); it != inds.end(); it++) {faceWeigth += *it*randoms[count++];}
-            facesWeigth.push_back(faceWeigth);
-            facesOwners.push_back(facesOwner);
-        }//Loop on faces
+            std::vector< std::vector<int> > facesNodesIndexes = elem->facesNodesIndexes();
+            for(auto itFace = facesNodesIndexes.begin(); itFace != facesNodesIndexes.end(); itFace++){//Loop on faces
+                inds.clear();
+                for(auto itIndex = (*itFace).begin(); itIndex != (*itFace).end(); itIndex++)
+                    inds.push_back(*itIndex);
+                inds.sort();
+                count = 0; faceWeigth = 0; for(auto it = inds.begin(); it != inds.end(); it++) {faceWeigth += *it*randoms[count++];}
+                facesWeigth.push_back(faceWeigth);
+                facesOwners.push_back(facesOwner);
+            }//Loop on faces
+        }
+        else {
+            for(auto ind : elem->indexes()) {
+                facesWeigth.push_back(ind);
+                facesOwners.push_back(elemID);
+            }
+        }
 
     }//Loop on elements
 
@@ -131,12 +140,41 @@ void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance)
     auto facesWeigthIt = localFacesWeigth.begin();
     auto facesOwnersIt = localFacesOwners.begin();
     auto facesWeigthEndM1 = localFacesWeigth.end() - 1;
-    for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
-        if(*facesWeigthIt == *(facesWeigthIt+1)){
-            auto owner0 = ownerMap[*facesOwnersIt]; auto owner1 = ownerMap[*(facesOwnersIt+1)];
-            elemNeibour[owner1].push_back(owner0);
-            elemNeibour[owner0].push_back(owner1);
-            facesWeigthIt++; facesOwnersIt++;
+    if(connectByFaces_) {
+        for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
+            if(*facesWeigthIt == *(facesWeigthIt+1)){
+                auto owner0 = ownerMap[*facesOwnersIt]; auto owner1 = ownerMap[*(facesOwnersIt+1)];
+                elemNeibour[owner1].push_back(owner0);
+                elemNeibour[owner0].push_back(owner1);
+                facesWeigthIt++; facesOwnersIt++;
+            }
+        }
+    }
+    else {
+        auto target = localFacesWeigth.front();
+        std::vector<int> connected;
+        connected.push_back(localFacesOwners.front());
+        ++facesWeigthIt;
+        ++facesOwnersIt;
+        while(facesWeigthIt < localFacesWeigth.end()) {
+            if(*facesWeigthIt == target)
+                connected.push_back(ownerMap[*facesOwnersIt]);
+            if (*facesWeigthIt != target || facesWeigthIt == facesWeigthEndM1){
+                if(connected.size() > 1) {
+                    for(int ct1 = 0; ct1 < connected.size()-1; ++ct1)
+                        for(int ct2 = ct1+1; ct2 < connected.size(); ++ct2) {
+                            int owner0, owner1;
+                            owner0 = connected[ct1]; owner1 = connected[ct2];
+                            elemNeibour[owner0].push_back(owner1);
+                            elemNeibour[owner1].push_back(owner0);
+                        }
+                }
+                target = *facesWeigthIt;
+                connected.clear();
+                connected.push_back(ownerMap[*facesOwnersIt]);
+            }
+            ++facesWeigthIt;
+            ++facesOwnersIt;
         }
     }
     for(auto &rec : elemNeibour) if(rec.size() == 0) throw std::runtime_error("fail to construct neibours");
@@ -209,6 +247,13 @@ void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance)
         if ( rez != METIS_OK ) throw std::runtime_error("Metis runtime failed :(");
     }
 
+    std::set<int> parttabEntries;
+    for(auto p : parttab) parttabEntries.insert(p);
+    bool fail = false;
+    for(int ct = 0; ct < nParts; ++ct) if (parttabEntries.find(ct) == parttabEntries.end() ) fail = true;
+    if ( parttabEntries.size() != nParts || fail )
+        throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior.");
+
     std::vector<std::vector<int>> childsRegElements;
     childsRegElements.resize(nParts);
     for(size_t ct = 0; ct < parttab.size(); ++ct)
@@ -252,35 +297,83 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
         auto facesWeigthIt = facesWeigth.begin();
         auto facesOwnersIt = facesOwners.begin();
         auto facesWeigthEndM1 = facesWeigth.end() - 1;
-        for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
-            if(*facesWeigthIt == *(facesWeigthIt+1)){
-                //Check if *facesOwnersIt and *(facesOwnersIt+1) are in one SE
-                int owner0, owner1;
-                owner0 = *facesOwnersIt; owner1 = *(facesOwnersIt+1);
-                int ownerSE0 = -1, ownerSE1 = -1;
-                bool inSame = false;
-                if(ctLevel == 0){ownerSE0 = owner0; ownerSE1 = owner1;}
-                else{
-                    sbfSElement * se = selevels_[0][owner0];
-                    for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
-                    ownerSE0 = se->index();
-                    se = selevels_[0][owner1];
-                    for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
-                    ownerSE1 = se->index();
-                    if(ownerSE0 == ownerSE1) inSame = true;
+        if(connectByFaces_) {
+            for(; facesWeigthIt < facesWeigthEndM1; facesWeigthIt++, facesOwnersIt++){
+                if(*facesWeigthIt == *(facesWeigthIt+1)){
+                    //Check if *facesOwnersIt and *(facesOwnersIt+1) are in one SE
+                    int owner0, owner1;
+                    owner0 = *facesOwnersIt; owner1 = *(facesOwnersIt+1);
+                    int ownerSE0 = -1, ownerSE1 = -1;
+                    bool inSame = false;
+                    if(ctLevel == 0){ownerSE0 = owner0; ownerSE1 = owner1;}
+                    else{
+                        sbfSElement * se = selevels_[0][owner0];
+                        for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
+                        ownerSE0 = se->index();
+                        se = selevels_[0][owner1];
+                        for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
+                        ownerSE1 = se->index();
+                        if(ownerSE0 == ownerSE1) inSame = true;
+                    }
+                    if (inSame){ facesWeigthIt++; facesOwnersIt++; continue; }
+                    elemNeibour[ownerSE1].push_back(ownerSE0);
+                    elemNeibour[ownerSE0].push_back(ownerSE1);
+                    facesWeigthNextLevel.push_back(*facesWeigthIt);
+                    facesWeigthNextLevel.push_back(*facesWeigthIt);
+                    facesOwnersNextLevel.push_back(*facesOwnersIt);
+                    facesOwnersNextLevel.push_back(*(facesOwnersIt+1));
+                    facesWeigthIt++; facesOwnersIt++;
+                    founded++;
                 }
-                if (inSame){ facesWeigthIt++; facesOwnersIt++; continue; }
-                elemNeibour[ownerSE1].push_back(ownerSE0);
-                elemNeibour[ownerSE0].push_back(ownerSE1);
-                facesWeigthNextLevel.push_back(*facesWeigthIt);
-                facesWeigthNextLevel.push_back(*facesWeigthIt);
-                facesOwnersNextLevel.push_back(*facesOwnersIt);
-                facesOwnersNextLevel.push_back(*(facesOwnersIt+1));
-                facesWeigthIt++; facesOwnersIt++;
-                founded++;
+                else unfounded++;
             }
-            else unfounded++;
         }
+        else {
+            auto target = facesWeigth.front();
+            std::vector<int> connected;
+            connected.push_back(facesOwners.front());
+            ++facesWeigthIt;
+            ++facesOwnersIt;
+            while(facesWeigthIt < facesWeigth.end()) {
+                if(*facesWeigthIt == target)
+                    connected.push_back(*facesOwnersIt);
+                if (*facesWeigthIt != target || facesWeigthIt == facesWeigthEndM1){
+                    if(connected.size() > 1) {
+                        for(int ct1 = 0; ct1 < connected.size()-1; ++ct1)
+                            for(int ct2 = ct1+1; ct2 < connected.size(); ++ct2) {
+                                //Check if connected[ct1] and connected[ct2] are in one SE
+                                int owner0, owner1;
+                                owner0 = connected[ct1]; owner1 = connected[ct2];
+                                int ownerSE0 = -1, ownerSE1 = -1;
+                                bool inSame = false;
+                                if(ctLevel == 0){ownerSE0 = owner0; ownerSE1 = owner1;}
+                                else{
+                                    sbfSElement * se = selevels_[0][owner0];
+                                    for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
+                                    ownerSE0 = se->index();
+                                    se = selevels_[0][owner1];
+                                    for(size_t ct = 0; ct < ctLevel; ct++) se = se->parent();
+                                    ownerSE1 = se->index();
+                                    if(ownerSE0 == ownerSE1) inSame = true;
+                                }
+                                if (inSame) continue;
+                                elemNeibour[ownerSE1].push_back(ownerSE0);
+                                elemNeibour[ownerSE0].push_back(ownerSE1);
+                                facesWeigthNextLevel.push_back(target);
+                                facesWeigthNextLevel.push_back(target);
+                                facesOwnersNextLevel.push_back(connected[ct1]);
+                                facesOwnersNextLevel.push_back(connected[ct2]);
+                            }
+                    }
+                    target = *facesWeigthIt;
+                    connected.clear();
+                    connected.push_back(*facesOwnersIt);
+                }
+                ++facesWeigthIt;
+                ++facesOwnersIt;
+            }
+        }
+        for(auto &rec : elemNeibour) if(rec.size() == 0) throw std::runtime_error("fail to construct neibours");
 
         std::vector<idx_t> verttab, edgetab, edlotab, parttab;
         verttab.resize(vertnbr+1);
@@ -354,8 +447,10 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
         {
             std::set<int> parttabEntries;
             for(auto p : parttab) parttabEntries.insert(p);
-            if ( parttabEntries.size() != nparts )
-                throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior.");
+            bool fail = false;
+            for(int ct = 0; ct < nparts; ++ct) if (parttabEntries.find(ct) == parttabEntries.end() ) fail = true;
+            if ( parttabEntries.size() != nparts || fail )
+                throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior. You may also try another strategy with \"--inverse\" flag.");
 //            std::map<int, int> partMap;
 //            int count = 0;
 //            for(auto p : parttabEntries) partMap.insert(std::make_pair(p, count++));

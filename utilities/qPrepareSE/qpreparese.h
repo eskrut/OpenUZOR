@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QDir>
 #include <QString>
+#include <QSettings>
 #include "../prepareSE/sebuilder.h"
 
 class QPrepareSE : public QDialog
@@ -27,14 +28,16 @@ private:
     QLineEdit maxImbalanceLine_;
     QCheckBox seedChB_;
     QCheckBox inverseChB_;
+    QCheckBox nodeConnectionChb_;
     QPushButton make_;
+    QSettings *settings_;
 
     SEBuilder *seBuilder_;
 signals:
 private slots:
     void onChangeDirPressed();
 public slots:
-    void onDirChanged(const QString &dirName);
+    void onIndFileChanged(const QString &indFileName);
     void onMake();
 
 };

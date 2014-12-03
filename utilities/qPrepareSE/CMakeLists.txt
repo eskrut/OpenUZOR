@@ -19,6 +19,8 @@ if(NOT (TARGET_QT_VERSION VERSION_EQUAL "4" OR TARGET_QT_VERSION VERSION_EQUAL "
   message(FATAL_ERROR "Expected value for TARGET_QT_VERSION is either '4' or '5'")
 endif()
 
+set(FILES_TO_TRANSLATE ru_ru.ts)
+
 if(TARGET_QT_VERSION VERSION_GREATER "4")
   find_package(Qt5Widgets REQUIRED)
   include_directories(${Qt5Widgets_INCLUDE_DIRS})
@@ -26,15 +28,19 @@ if(TARGET_QT_VERSION VERSION_GREATER "4")
 
   qt5_wrap_cpp(MOCSrcs qpreparese.h)
 
+  find_package(Qt5LinguistTools)
+  qt5_create_translation(QM qpreparese.cpp ru_ru.ts)
+
   set(QT_LIBRARIES ${Qt5Widgets_LIBRARIES})
 else()
   find_package(Qt REQUIRED)
   include(${QT_USE_FILE})
   include_directories(${QT_INCLUDE_DIRS})
   qt4_wrap_cpp(MOCSrcs qpreparese.h)
+  qt4_add_translation(QM ${FILES_TO_TRANSLATE})
 endif()
 
-add_executable(${PROJECT_NAME} ${SRC_LIST} ../prepareSE/sebuilder.cpp ${MOCSrcs} ${UISrcs})
+add_executable(${PROJECT_NAME} ${SRC_LIST} ../prepareSE/sebuilder.cpp ${MOCSrcs} ${UISrcs} ${QM} ${QRC})
 target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${SBF_LIBRARIES})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})

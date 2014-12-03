@@ -25,6 +25,7 @@ private:
     int numCuts_;
     bool seed_;
     bool inversePartition_;
+    bool connectByFaces_;
 public:
     void setVerbouse(bool verbose) { verbouse_ = verbose; }
     void setUseSeed(bool seed) { seed_ = seed; }
@@ -33,6 +34,7 @@ public:
     void write(const char *levelBaseName = "level");
     void setNumIterations(int numIterations) { numIterations_ = numIterations; }
     void setNumCuts(int numCuts) { numCuts_ = numCuts; }
+    void setUseConnectionByFaces(bool useFaseConnection) { connectByFaces_ = useFaseConnection; }
 private:
     void processFacesWeigthOwners(int numRegElems, std::vector<int> &facesOwners, std::vector<double> &facesWeigth);
     void processFacesWeigthOwners(const std::vector<int> &regElems, std::vector<int> &facesOwners, std::vector<double> &facesWeigth);
