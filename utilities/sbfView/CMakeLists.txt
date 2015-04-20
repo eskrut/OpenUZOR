@@ -16,7 +16,7 @@ find_package(VTK COMPONENTS
   vtkGUISupportQt
   vtkGUISupportQtOpenGL
   vtkIOInfovis
-  vtkRenderingFreeTypeOpenGL
+#  vtkRenderingFreeTypeOpenGL
   vtkViewsInfovis
 REQUIRED NO_MODULE)
 include(${VTK_USE_FILE})

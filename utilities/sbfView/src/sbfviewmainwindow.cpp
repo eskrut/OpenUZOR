@@ -11,6 +11,8 @@
 #include "sbfNode.h"
 #include "sbfElement.h"
 
+#include <memory>
+
 SbfViewMainWindow::SbfViewMainWindow(QWidget *parent) :
     QMainWindow(parent)
 {
