@@ -123,13 +123,13 @@ sbfMesh *ElementOrderConverter::convert ( const sbfMesh *originalMesh,
                 std::vector<int> newIndexes;
                 for ( const auto &ind : indexes ) {
                     const sbfNode &n = originalMesh->node ( ind );
-                    int id = findNodeID ( n );
-                    if ( id == -1 ) {
-                        id = mesh->addNode ( n, false );
-                        addToCache ( n, id );
-                    }
-                    newIndexes.push_back ( id );
-//                    newIndexes.push_back ( mesh->addNode ( n, true, mergeTolerance ) );
+//                    int id = findNodeID ( n );
+//                    if ( id == -1 ) {
+//                        id = mesh->addNode ( n, false );
+//                        addToCache ( n, id );
+//                    }
+//                    newIndexes.push_back ( id );
+                    newIndexes.push_back ( mesh->addNode ( n, true, mergeTolerance ) );
                 }
                 auto middleNode = [] ( const sbfNode & n0, const sbfNode & n1 ) {
                     return sbfNode ( ( n0.x() + n1.x() ) / 2,
@@ -143,15 +143,15 @@ sbfMesh *ElementOrderConverter::convert ( const sbfMesh *originalMesh,
             } ) {
                     const sbfNode &n = middleNode ( originalMesh->node ( indexes[p.first] ),
                                                     originalMesh->node ( indexes[p.second] ) );
-                    int id = findNodeID ( n );
-                    if ( id == -1 ) {
-                        id = mesh->addNode ( n, false );
-                        addToCache ( n, id );
-                    }
-                    newIndexes.push_back ( id );
-//                    newIndexes.push_back ( mesh->addNode ( middleNode ( originalMesh->node ( indexes[p.first] ),
-//                                                                                           originalMesh->node ( indexes[p.second] ) ),
-//                                                                                           true, mergeTolerance ) );
+//                    int id = findNodeID ( n );
+//                    if ( id == -1 ) {
+//                        id = mesh->addNode ( n, false );
+//                        addToCache ( n, id );
+//                    }
+//                    newIndexes.push_back ( id );
+                    newIndexes.push_back ( mesh->addNode ( middleNode ( originalMesh->node ( indexes[p.first] ),
+                                                                                           originalMesh->node ( indexes[p.second] ) ),
+                                                                                           true, mergeTolerance ) );
                 }
                 mesh->addElement ( sbfElement ( ElementType::HEXAHEDRON_QUADRATIC, newIndexes ) );
             }
