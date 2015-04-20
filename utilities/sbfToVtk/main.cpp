@@ -54,6 +54,7 @@ int main (int argc, char ** argv)
     writer->namePrefix() = prefix;
     writer->mtrBaseName() = mtrBaseName;
     writer->mtrNumDigits() = mtrNumDigits;
+    writer->levelBaseName() = levelBase;
     writer->sbaExtention() = sbaExtantion;
 
     writer->nodesDataNames().clear();

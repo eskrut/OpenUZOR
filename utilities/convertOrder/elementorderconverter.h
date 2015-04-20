@@ -11,7 +11,7 @@ public:
     sbfMesh *convert ( const sbfMesh *originalMesh,
                        int targetOrder,
                        bool verbouse = false,
-                       float mergeTolerance = 0.001 );
+                       float mergeTolerance = 0.0001 );
 
 };
 

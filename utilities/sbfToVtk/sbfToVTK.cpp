@@ -122,6 +122,7 @@ int sbfToVTKWriter::write()
     if( mesh->readMeshFromFiles(fullIName.str().c_str(), fullCName.str().c_str(), fullMName.str().c_str()) != 0 )
         return 2;
     mesh->printInfo();
+    report("Using compression ", flagUseCompression_ ? "ON" : "OFF");
 
     vtkUnstructuredGrid * grid = vtkUnstructuredGrid::New();
     vtkCellArray * cells = vtkCellArray::New();
