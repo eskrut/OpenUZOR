@@ -27,7 +27,7 @@ private:
     bool inversePartition_;
     bool connectByFaces_;
     std::string levelBaseName_;
-    int skipedLevels_;
+    size_t skipedLevels_;
 public:
     void setVerbouse(bool verbose) { verbouse_ = verbose; }
     void setUseSeed(bool seed) { seed_ = seed; }

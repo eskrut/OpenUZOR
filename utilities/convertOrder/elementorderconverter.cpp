@@ -65,9 +65,7 @@ sbfMesh *ElementOrderConverter::convert ( const sbfMesh *originalMesh,
             } ) {
                     const sbfNode &n = middleNode ( originalMesh->node ( indexes[p.first] ),
                                                     originalMesh->node ( indexes[p.second] ) );
-                    newIndexes.push_back ( mesh->addNode ( middleNode ( originalMesh->node ( indexes[p.first] ),
-                                                                        originalMesh->node ( indexes[p.second] ) ),
-                                                           true, mergeTolerance ) );
+                    newIndexes.push_back ( mesh->addNode ( n, true, mergeTolerance ) );
                 }
                 mesh->addElement ( sbfElement ( ElementType::HEXAHEDRON_QUADRATIC, newIndexes ) );
             }

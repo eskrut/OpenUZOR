@@ -61,7 +61,7 @@ void SEBuilder::write(const char *levelBaseName)
 
         for(int ctElem = 0; ctElem < mesh_->numElements(); ++ctElem) {
             auto se = selevels_[0][ctElem];
-            for(int ctLevel = 0; ctLevel <= ct; ++ctLevel)
+            for(size_t ctLevel = 0; ctLevel <= ct; ++ctLevel)
                 se = se->parent();
             levelMtrs.data()[ctElem] = se->index() + 1;
         }
@@ -164,8 +164,8 @@ void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance)
                 connected.push_back(ownerMap[*facesOwnersIt]);
             if (*facesWeigthIt != target || facesWeigthIt == facesWeigthEndM1){
                 if(connected.size() > 1) {
-                    for(int ct1 = 0; ct1 < connected.size()-1; ++ct1)
-                        for(int ct2 = ct1+1; ct2 < connected.size(); ++ct2) {
+                    for(size_t ct1 = 0; ct1 < connected.size()-1; ++ct1)
+                        for(size_t ct2 = ct1+1; ct2 < connected.size(); ++ct2) {
                             int owner0, owner1;
                             owner0 = connected[ct1]; owner1 = connected[ct2];
                             elemNeibour[owner0].push_back(owner1);
@@ -254,7 +254,7 @@ void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance)
     for(auto p : parttab) parttabEntries.insert(p);
     bool fail = false;
     for(int ct = 0; ct < nParts; ++ct) if (parttabEntries.find(ct) == parttabEntries.end() ) fail = true;
-    if ( parttabEntries.size() != nParts || fail )
+    if ( static_cast<int>(parttabEntries.size()) != nParts || fail )
         throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior.");
 
     std::vector<std::vector<int>> childsRegElements;
@@ -343,8 +343,8 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
                     connected.push_back(*facesOwnersIt);
                 if (*facesWeigthIt != target || facesWeigthIt == facesWeigthEndM1){
                     if(connected.size() > 1) {
-                        for(int ct1 = 0; ct1 < connected.size()-1; ++ct1)
-                            for(int ct2 = ct1+1; ct2 < connected.size(); ++ct2) {
+                        for(size_t ct1 = 0; ct1 < connected.size()-1; ++ct1)
+                            for(size_t ct2 = ct1+1; ct2 < connected.size(); ++ct2) {
                                 //Check if connected[ct1] and connected[ct2] are in one SE
                                 int owner0, owner1;
                                 owner0 = connected[ct1]; owner1 = connected[ct2];
@@ -454,7 +454,7 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
                 for(auto p : parttab) parttabEntries.insert(p);
                 bool fail = false;
                 for(int ct = 0; ct < nparts; ++ct) if (parttabEntries.find(ct) == parttabEntries.end() ) fail = true;
-                if ( parttabEntries.size() != nparts || fail )
+                if ( static_cast<int>(parttabEntries.size()) != nparts || fail )
                     throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior. You may also try another strategy with \"--inverse\" flag.");
             }
 
@@ -553,8 +553,8 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
         sbfSElement::update(selevels_.back().begin(), selevels_.back().end());
 //        for(auto se : selevels_.back())
 //            se->updateStat();
-        for(int ctLevel = 1; ctLevel < selevels_.size(); ++ctLevel)
-            for(int ct = 0; ct < selevels_[ctLevel].size(); ++ct)
+        for(size_t ctLevel = 1; ctLevel < selevels_.size(); ++ctLevel)
+            for(size_t ct = 0; ct < selevels_[ctLevel].size(); ++ct)
                 SEStats.insert(std::make_pair(std::make_pair(ctLevel, ct+1), selevels_[ctLevel][ct]->stat()));
         report("Level ID", "SE ID", "Nodes inner", "Nodes outer", "Num elements");
         for(const auto &rec : SEStats)
@@ -572,27 +572,27 @@ int SEBuilder::generateLevelsInverce(const std::vector<int> &numTargetByLayers, 
     auto fakeSE = new sbfSElement(mesh_);
     std::vector<int> elemsIDs;
     elemsIDs.resize(numRegElems);
-    for(size_t ct = 0; ct < numRegElems; ++ct) elemsIDs[ct] = ct;
+    for(int ct = 0; ct < numRegElems; ++ct) elemsIDs[ct] = ct;
     fakeSE->setRegElemIndexes(elemsIDs);
 
     std::vector<sbfSElement*> curSElements;
     curSElements.push_back(fakeSE);
 
-    for(int ctLevel = numTargetByLayers.size()-1; ctLevel >= 0; --ctLevel) {
+    for(int ctLevel = static_cast<int>(numTargetByLayers.size())-1; ctLevel >= 0; --ctLevel) {
         int numTargetInThisLevel = numTargetByLayers[ctLevel];
         int numAttached = 0;
         std::vector<int> numParts;
         std::vector<sbfSElement*> nextSElements;
         double maxLayerImbalance = maxImbalanceByLayer.back();
-        if( ctLevel < maxImbalanceByLayer.size() ) maxLayerImbalance = maxImbalanceByLayer.at(ctLevel);
-        for(int ct = 0; ct < curSElements.size(); ++ct) {
+        if( ctLevel < static_cast<int>(maxImbalanceByLayer.size()) ) maxLayerImbalance = maxImbalanceByLayer.at(ctLevel);
+        for(size_t ct = 0; ct < curSElements.size(); ++ct) {
             numParts.push_back((numTargetInThisLevel - numAttached)/(curSElements.size()-ct));
             numAttached += numParts.back();
             partSE(curSElements[ct], numParts.back(), maxLayerImbalance);
             for(int ctChild = 0; ctChild < curSElements[ct]->numSElements(); ++ctChild )
                 nextSElements.push_back(curSElements[ct]->children(ctChild));
         }
-        for (int ctSE = 0; ctSE < nextSElements.size(); ++ctSE) {
+        for (size_t ctSE = 0; ctSE < nextSElements.size(); ++ctSE) {
             selevels_[ctLevel+1][ctSE] = nextSElements[ctSE];
             nextSElements[ctSE]->setIndex(ctSE);
         }
@@ -603,4 +603,5 @@ int SEBuilder::generateLevelsInverce(const std::vector<int> &numTargetByLayers, 
         auto regEls = se->regElemIndexes();
         for(auto el : regEls) selevels_[0][el]->setParent(se);
     }
+    return 0;
 }

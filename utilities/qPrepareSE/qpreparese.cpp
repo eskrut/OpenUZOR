@@ -96,7 +96,7 @@ void QPrepareSE::onMake()
     for(auto p : parts) maxImbalance.push_back(p.toDouble());
     auto checkPart = [&]()->bool
     {
-            for(int ct = 0; ct < numTargetByLayers.size()-1; ++ct)
+            for(size_t ct = 0; ct < numTargetByLayers.size()-1; ++ct)
             if(numTargetByLayers[ct] <= numTargetByLayers[ct+1])
             return true;
     return false;
