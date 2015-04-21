@@ -83,7 +83,7 @@ int main(int argc, char ** argv)
     pBuilder->setNumIterations(numIterations);
     pBuilder->setNumCuts(numCut);
     pBuilder->setUseConnectionByFaces(!useNodesConnection);
-    pBuilder->make(numTargetByLayers, maxImbalance);
+    pBuilder->make(numTargetByLayers, maxImbalance, lName.str().c_str());
     pBuilder->write(lName.str().c_str());
 
     std::cout << "DONE" << std::endl;

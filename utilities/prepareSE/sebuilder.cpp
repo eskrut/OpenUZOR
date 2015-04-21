@@ -11,7 +11,8 @@ SEBuilder::SEBuilder(const sbfMesh *mesh, const bool targetCut) :
     numCuts_(3),
     seed_(false),
     inversePartition_(false),
-    connectByFaces_(true)
+    connectByFaces_(true),
+    skipedLevels_(0)
 {
     seLevels_.setMesh(mesh_);
 }
@@ -20,9 +21,10 @@ SEBuilder::~SEBuilder()
 {
 }
 
-void SEBuilder::make(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer)
+void SEBuilder::make(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer, const char *levelBaseName)
 {
     const int numElems = mesh_->numElements();
+    levelBaseName_ =  levelBaseName;
 
     //Prepare zero level of SE - each SE contains only one regular element
     selevels_.resize(numTargetByLayers.size() + 1);
@@ -54,7 +56,8 @@ void SEBuilder::write(const char *levelBaseName)
         level.setLevelIndex(ct+1);
         for(size_t ctSE = 0; ctSE < selevels_[ct].size(); ctSE++) level.setIndex(ctSE, selevels_[ct][ctSE]->parent()->index());
 
-        level.writeToFile(levelBaseName, ct+1);
+        if(ct >= skipedLevels_)
+            level.writeToFile(levelBaseName, ct+1);
 
         for(int ctElem = 0; ctElem < mesh_->numElements(); ++ctElem) {
             auto se = selevels_[0][ctElem];
@@ -270,6 +273,7 @@ void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance)
 }
 
 int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer){
+    skipedLevels_ = 0;
     int numRegElems = selevels_[0].size();
     std::vector <double> facesWeigth;
     std::vector <int> facesOwners;
@@ -427,85 +431,98 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
         if (seed_)
             options[METIS_OPTION_SEED] = time(nullptr);
 //        options[METIS_OPTION_DBGLVL] = 1;
-        int rez = METIS_PartGraphKway(&nvtxs,
-                                      &ncon,
-                                      verttab.data(),
-                                      edgetab.data(),
-                                      /*idx_t *vwgt*/nullptr,
-                                      /*idx_t *vsize*/nullptr,
-                                      /*idx_t *adjwgt*/nullptr,
-                                      &nparts,
-                                      /*real_t *tpwgts*/nullptr,
-                                      /*real_t *ubvec*/nullptr,
-                                      options,
-                                      &objval,
-                                      parttab.data()
-                                      );
-        if ( rez != METIS_OK ) throw std::runtime_error("Metis runtime failed :(");
 
-        //BUGFIX sometimes returned parttab is strange - it is not continious and not based with 0
-        {
-            std::set<int> parttabEntries;
-            for(auto p : parttab) parttabEntries.insert(p);
-            bool fail = false;
-            for(int ct = 0; ct < nparts; ++ct) if (parttabEntries.find(ct) == parttabEntries.end() ) fail = true;
-            if ( parttabEntries.size() != nparts || fail )
-                throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior. You may also try another strategy with \"--inverse\" flag.");
-//            std::map<int, int> partMap;
-//            int count = 0;
-//            for(auto p : parttabEntries) partMap.insert(std::make_pair(p, count++));
-//            for(auto &p : parttab) p = partMap[p];
-//            assert(parttabEntries.size() == nparts);
+        if(nparts != 0) {
+            int rez = METIS_PartGraphKway(&nvtxs,
+                                          &ncon,
+                                          verttab.data(),
+                                          edgetab.data(),
+                                          /*idx_t *vwgt*/nullptr,
+                                          /*idx_t *vsize*/nullptr,
+                                          /*idx_t *adjwgt*/nullptr,
+                                          &nparts,
+                                          /*real_t *tpwgts*/nullptr,
+                                          /*real_t *ubvec*/nullptr,
+                                          options,
+                                          &objval,
+                                          parttab.data()
+                                          );
+            if ( rez != METIS_OK ) throw std::runtime_error("Metis runtime failed :(");
+            //BUGFIX sometimes returned parttab is strange - it is not continious and not based with 0
+            {
+                std::set<int> parttabEntries;
+                for(auto p : parttab) parttabEntries.insert(p);
+                bool fail = false;
+                for(int ct = 0; ct < nparts; ++ct) if (parttabEntries.find(ct) == parttabEntries.end() ) fail = true;
+                if ( parttabEntries.size() != nparts || fail )
+                    throw std::runtime_error("Metis failed to make partitioning. This is sad :( You may try to change amounts of SE in failed level. Targeting number of super elements of half previous level size often leads to this behavior. You may also try another strategy with \"--inverse\" flag.");
+            }
+
+            //Metis solves following problem, but still it should be checked
+            //There are SElements with some disconnected clusters of elements.
+            //For such SE split them to several SEs
+
+            for(auto seIT = selevels_[ctLevel+1].begin(); seIT != selevels_[ctLevel+1].end(); seIT++){//Loop on SElements including new ones
+                std::set<int> allElemIndexes;//Indexes of all elements in this SE
+                for(int ct = 0; ct < (*seIT)->numSElements(); ct++) allElemIndexes.insert((*seIT)->children(ct)->index());
+                std::set<int> inOneSE;
+                inOneSE.insert(*(allElemIndexes.begin()));
+                bool flagChanges = true;
+                while(flagChanges){
+                    flagChanges = false;
+                    for(auto it = inOneSE.begin(); it != inOneSE.end(); it++){
+                        for(auto itN = elemNeibour[*it].begin(); itN != elemNeibour[*it].end(); itN++){
+                            if(allElemIndexes.count(*itN) && !inOneSE.count(*itN)){
+                                inOneSE.insert(*itN);
+                                flagChanges = true;
+                            }
+                        }
+                    }
+                }
+                if(allElemIndexes.size() != inOneSE.size()){
+                    std::set<int> inOtherSE;
+                    (*seIT)->setChildrens(std::vector<sbfSElement *>{});
+                    (*seIT)->numSElements();
+                    for(auto it = inOneSE.begin(); it != inOneSE.end(); it++){
+                        (*seIT)->addChildren(selevels_[ctLevel][*it]);
+                        selevels_[ctLevel][*it]->setParent(*seIT);
+                    }
+                    for(auto it = allElemIndexes.begin(); it != allElemIndexes.end(); it++){
+                        if(!inOneSE.count(*it))
+                            inOtherSE.insert(*it);
+                    }
+                    sbfSElement *additionalSE = new sbfSElement((*seIT)->mesh(), selevels_[ctLevel+1].size());
+                    for(auto it = inOtherSE.begin(); it != inOtherSE.end(); it++){
+                        additionalSE->addChildren(selevels_[ctLevel][*it]);
+                        selevels_[ctLevel][*it]->setParent(additionalSE);
+                    }
+                    selevels_[ctLevel+1].push_back(additionalSE);
+                    if ( verbouse_ ) std::cout << "Split disconnected SE to two of sizes: " << inOneSE.size() << ", " << inOtherSE.size() << std::endl;
+                }
+            }//Loop on SElements including new ones
         }
-
+        else {
+            //Try to read from file
+            sbfSELevel lev;
+            lev.setSize(numSElems);
+            if( lev.readFromFile(levelBaseName_.c_str(), ctLevel+1) ) {
+                std::string err = "Cant read requested level file";
+                report.error( err, levelBaseName_, ctLevel );
+                throw std::runtime_error( err );
+            }
+            for(int ct = 0; ct < numSElems; ++ct)
+                parttab[ct] = lev.index(ct);
+            skipedLevels_++;
+            const int numse = lev.numSE();
+            selevels_[ctLevel+1].reserve(numse*100);
+            for(int ct1 = 0; ct1 < numse; ct1++)
+                selevels_[ctLevel+1].push_back( new sbfSElement(mesh_, ct1) );
+        }
 
         for(int ct = 0; ct < numSElems; ct++){
             selevels_[ctLevel][ct]->setParent(selevels_[ctLevel+1][parttab[ct]]);
             selevels_[ctLevel+1][parttab[ct]]->addChildren(selevels_[ctLevel][ct]);
         }
-
-        //Metis solves following problem, but still it should be checked
-        //There are SElements with some disconnected clusters of elements.
-        //For such SE split them to several SEs
-
-        for(auto seIT = selevels_[ctLevel+1].begin(); seIT != selevels_[ctLevel+1].end(); seIT++){//Loop on SElements including new ones
-            std::set<int> allElemIndexes;//Indexes of all elements in this SE
-            for(int ct = 0; ct < (*seIT)->numSElements(); ct++) allElemIndexes.insert((*seIT)->children(ct)->index());
-            std::set<int> inOneSE;
-            inOneSE.insert(*(allElemIndexes.begin()));
-            bool flagChanges = true;
-            while(flagChanges){
-                flagChanges = false;
-                for(auto it = inOneSE.begin(); it != inOneSE.end(); it++){
-                    for(auto itN = elemNeibour[*it].begin(); itN != elemNeibour[*it].end(); itN++){
-                        if(allElemIndexes.count(*itN) && !inOneSE.count(*itN)){
-                            inOneSE.insert(*itN);
-                            flagChanges = true;
-                        }
-                    }
-                }
-            }
-            if(allElemIndexes.size() != inOneSE.size()){
-                std::set<int> inOtherSE;
-                (*seIT)->setChildrens(std::vector<sbfSElement *>{});
-                (*seIT)->numSElements();
-                for(auto it = inOneSE.begin(); it != inOneSE.end(); it++){
-                    (*seIT)->addChildren(selevels_[ctLevel][*it]);
-                    selevels_[ctLevel][*it]->setParent(*seIT);
-                }
-                for(auto it = allElemIndexes.begin(); it != allElemIndexes.end(); it++){
-                    if(!inOneSE.count(*it))
-                        inOtherSE.insert(*it);
-                }
-                sbfSElement *additionalSE = new sbfSElement((*seIT)->mesh(), selevels_[ctLevel+1].size());
-                for(auto it = inOtherSE.begin(); it != inOtherSE.end(); it++){
-                    additionalSE->addChildren(selevels_[ctLevel][*it]);
-                    selevels_[ctLevel][*it]->setParent(additionalSE);
-                }
-                selevels_[ctLevel+1].push_back(additionalSE);
-                if ( verbouse_ ) std::cout << "Split disconnected SE to two of sizes: " << inOneSE.size() << ", " << inOtherSE.size() << std::endl;
-            }
-        }//Loop on SElements including new ones
 
         facesWeigth = facesWeigthNextLevel;
         facesOwners = facesOwnersNextLevel;
@@ -548,6 +565,7 @@ int SEBuilder::generateLevels(const std::vector<int> &numTargetByLayers, const s
 
 int SEBuilder::generateLevelsInverce(const std::vector<int> &numTargetByLayers, const std::vector<double> &maxImbalanceByLayer)
 {
+    skipedLevels_ = 0;
     int numRegElems = selevels_[0].size();
 
     //Construct top-level fake SElement

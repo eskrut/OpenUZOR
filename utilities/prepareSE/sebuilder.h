@@ -26,11 +26,14 @@ private:
     bool seed_;
     bool inversePartition_;
     bool connectByFaces_;
+    std::string levelBaseName_;
+    int skipedLevels_;
 public:
     void setVerbouse(bool verbose) { verbouse_ = verbose; }
     void setUseSeed(bool seed) { seed_ = seed; }
     void setUseInversePartition(bool inversePartition) { inversePartition_ = inversePartition; }
-    void make(const std::vector<int> &numByLayers, const std::vector<double> &maxImbalanceByLayer = std::vector<double>());
+    // If there are leading zeros, try to read corresponding existing level
+    void make(const std::vector<int> &numByLayers, const std::vector<double> &maxImbalanceByLayer = std::vector<double>(), const char *levelBaseName = "level");
     void write(const char *levelBaseName = "level");
     void setNumIterations(int numIterations) { numIterations_ = numIterations; }
     void setNumCuts(int numCuts) { numCuts_ = numCuts; }
