@@ -1,4 +1,5 @@
 option(BUILD_PREPARE_SE "Build prepareSE project" ON)
+option(BUILD_REORDER "Build reorder project" ON)
 option(BUILD_QPREPARE_SE "Build qPrepareSE project" ON)
 option(BUILD_SBFTOVTK "Build sbfToVtk project" ON)
 option(BUILD_QSBFTOVTK "Build qSbfToVtk project" ON)
@@ -8,6 +9,11 @@ option(BUILD_CONVERTORDER "Build sbfView project" ON)
 if(BUILD_PREPARE_SE)
     message("Configuring prepareSE")
     add_subdirectory(prepareSE)
+endif()
+
+if(BUILD_REORDER)
+    message("Configuring reorder")
+    add_subdirectory(reorder)
 endif()
 
 if(BUILD_QPREPARE_SE)
