@@ -16,3 +16,10 @@ include_directories(${Boost_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
 
 target_link_libraries(${PROJECT_NAME} metis)
+
+file(GLOB sources_loc reorderer.cpp)
+file(GLOB headers_loc reorderer.h)
+
+set(lib_sources ${lib_sources} ${sources_loc} PARENT_SCOPE)
+set(lib_headers ${lib_headers} ${headers_loc} PARENT_SCOPE)
+set(lib_depends ${lib_depends} ${SBF_LIBRARIES} ${Boost_LIBRARIES} metis PARENT_SCOPE)

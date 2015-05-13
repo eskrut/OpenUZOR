@@ -16,6 +16,7 @@ public:
     Reorderer();
     ~Reorderer();
 public:
+    using ComputeResult = std::pair<std::vector<int> /*perm*/, std::vector<int> /*iperm*/>;
     //! Reordering routines
     //@{
     /**
@@ -26,9 +27,9 @@ public:
      * @return pair of vectors. First one is original IDs of reordered graph.
      * iperm is new IDs of nodes after reordering.
      */
-    std::pair<std::vector<int> /*perm*/, std::vector<int> /*iperm*/> renumber(const std::vector<int> &rowShifts,
-                                                                              const std::vector<int> &columnIDs,
-                                                                              bool makeReport = true);
+    ComputeResult computeReordering ( const std::vector<int> &rowShifts,
+                                      const std::vector<int> &columnIDs,
+                                      bool makeReport = true ) const;
     /**
      * @brief renumber This function computes reordering arrays.
      * @param mesh sbfMesh to perform reordering.
@@ -36,8 +37,10 @@ public:
      * @return pair of vectors. perm is original IDs of reordered mesh.
      * iperm is new IDs of nodes after reordering.
      */
-    std::pair<std::vector<int> /*perm*/, std::vector<int> /*iperm*/> renumber(const sbfMesh *mesh, bool makeReport = true);
+    ComputeResult computeReordering ( const sbfMesh *mesh,
+                                      bool makeReport = true ) const;
     //@}
+    void makeReordering ( sbfMesh *mesh, bool makeReport = true ) const;
 };
 
 #endif // REORDERER_H

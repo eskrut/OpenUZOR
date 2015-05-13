@@ -40,3 +40,7 @@ if(BUILD_CONVERTORDER)
     message("Configuring convertOrder")
     add_subdirectory(convertOrder)
 endif()
+
+set(lib_sources ${lib_sources} PARENT_SCOPE)
+set(lib_headers ${lib_headers} PARENT_SCOPE)
+set(lib_depends ${lib_depends} PARENT_SCOPE)

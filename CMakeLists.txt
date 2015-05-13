@@ -9,3 +9,11 @@ endif()
 
 add_subdirectory(utilities)
 add_subdirectory(solvers)
+
+if(UNIX)
+    set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -Wextra -pedantic ${CMAKE_CXX_FLAGS}")
+endif()
+find_package(sbf REQUIRED)
+include_directories(${SBF_INCLUDE_DIRS})
+add_library(${PROJECT_NAME} SHARED ${lib_sources} ${lib_headers})
+target_link_libraries(${PROJECT_NAME} ${lib_depends})

@@ -35,7 +35,7 @@ int main ( int argc, char **argv )
 
     Reorderer rord;
 
-    rord.renumber ( pMesh.get() );
+    auto permIperm = rord.computeReordering ( pMesh.get() );
 
     return 0;
 }

@@ -18,9 +18,9 @@ Reorderer::~Reorderer()
 
 }
 
-std::pair<std::vector<int>, std::vector<int> > Reorderer::renumber ( const std::vector<int> &rowShifts,
-                                                                     const std::vector<int> &columnIDs,
-                                                                     bool makeReport )
+Reorderer::ComputeResult Reorderer::computeReordering ( const std::vector<int> &rowShifts,
+                                                        const std::vector<int> &columnIDs,
+                                                        bool makeReport ) const
 {
     std::pair<std::vector<int>, std::vector<int> > reorderIndexes;
     reorderIndexes.first.resize ( rowShifts.size() - 1, -1 );
@@ -100,7 +100,7 @@ std::pair<std::vector<int>, std::vector<int> > Reorderer::renumber ( const std::
     return reorderIndexes;
 }
 
-std::pair<std::vector<int>, std::vector<int> > Reorderer::renumber ( const sbfMesh *mesh, bool makeReport )
+Reorderer::ComputeResult Reorderer::computeReordering ( const sbfMesh *mesh, bool makeReport ) const
 {
     std::vector<std::set<int>> connections;
     int maxNodeID = 0;
@@ -130,6 +130,13 @@ std::pair<std::vector<int>, std::vector<int> > Reorderer::renumber ( const sbfMe
         rowShifts.push_back ( colLength );
     }
 
-    return renumber ( rowShifts, columnIDs, makeReport );
+    return computeReordering ( rowShifts, columnIDs, makeReport );
+}
+
+void Reorderer::makeReordering ( sbfMesh *mesh, bool makeReport ) const
+{
+    ComputeResult permIperm = computeReordering ( mesh, makeReport );
+
+    mesh->renumberNodes(permIperm.second.data());
 }
 
