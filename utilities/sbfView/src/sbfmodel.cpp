@@ -15,11 +15,17 @@ SbfModel::SbfModel(QObject *parent, QSettings *settings) :
     settings_(settings)
 {
     grid_ = vtkUnstructuredGrid::New();
+    clipped_ = vtkBoxClipDataSet::New();
     points_ = vtkPoints::New();
     cells_ = vtkCellArray::New();
     mesh_ = new sbfMesh;
 
     dataModel_ = new SbfDataModel(this);
+
+    for(size_t ct = 0; ct < 3; ++ct){
+        clipBoxBounds_[ct*2+0] = std::numeric_limits<float>::lowest();
+        clipBoxBounds_[ct*2+1] = std::numeric_limits<float>::max();
+    }
 
     if(settings_){
         settings_->beginGroup("lastRead");
@@ -83,13 +89,15 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
 //        dataModel_->invisibleRootItem()->appendRow(noneItem);
         SbfDataItem *mtrDataItem = new SbfDataItem(mtrData->GetName(), SbfDataItem::Material, SbfDataItem::CellData);
         dataModel_->invisibleRootItem()->appendRow(mtrDataItem);
+
+        updateClipped();
     }
     return status;
 }
 
-void SbfModel::addData(const QString &fileName)
+void SbfModel::addData(const QString &fileName, const QString &arrayName)
 {
-    std::string catalog, baseName, suf;
+    std::string catalog, baseName, suf, aName;
     int numDigits;
     auto f = fileName;
     f = f.replace("\\", "/");
@@ -105,6 +113,8 @@ void SbfModel::addData(const QString &fileName)
     numDigits = leadingZeros.size() + count.size();
     baseName = fi.baseName().toStdString();
     baseName.erase(baseName.size()-numDigits);
+    if(arrayName.isNull()) aName = baseName;
+    else aName = arrayName.toStdString();
     const int numNodes = mesh_->numNodes();
     try {
         NodesData<float, 3> *dataF = new NodesData<float, 3>(fileName.toStdString(), mesh_);
@@ -112,13 +122,14 @@ void SbfModel::addData(const QString &fileName)
             throw std::runtime_error("not this type");
         mesh_->addFVData(dataF);
         vtkFloatArray *data(vtkFloatArray::New());
-        data->SetName(baseName.c_str());
+        data->SetName(aName.c_str());
         data->SetNumberOfComponents(3);
         data->SetNumberOfTuples(numNodes);
         for(int ct = 0; ct < 3; ++ct) for(int ctNode = 0; ctNode < numNodes; ++ctNode)
             data->SetComponent(ctNode, ct, dataF->data(ctNode, ct));
         grid_->GetPointData()->AddArray(data);
-        auto item = new SbfDataItem(baseName.c_str(), SbfDataItem::FloatVector, SbfDataItem::NodeData);
+        updateClipped();
+        auto item = new SbfDataItem(aName.c_str(), SbfDataItem::FloatVector, SbfDataItem::NodeData);
         item->setData(qVariantFromValue(static_cast<void*>(dataF)), SbfDataItem::SbfPointerRequest);
         item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
         dataModel_->invisibleRootItem()->appendRow(item);
@@ -138,19 +149,21 @@ void SbfModel::addData(const QString &fileName)
     try {
         const int numArrays = 20;
         SolutionBundle<float, numArrays> *Fsol = new SolutionBundle<float>(fileName.toStdString(), mesh_->numNodes());
-        if(Fsol->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
+        //FIXME this should work with default type in template
+        if(Fsol->readFromFile<float>(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
             throw std::runtime_error("not this type");
         mesh_->addSolutionBundle(Fsol);
         for(int ct = 0; ct < numArrays; ++ct) {
             auto array = Fsol->array(ct);
             if(array) {
                 vtkFloatArray *data(vtkFloatArray::New());
-                data->SetName((baseName+"/"+Fsol->name(ct)).c_str());
+                data->SetName((aName+"/"+Fsol->name(ct)).c_str());
                 data->SetNumberOfComponents(1);
                 data->SetNumberOfTuples(numNodes);
                 for(int ctNode = 0; ctNode < numNodes; ++ctNode)
                     data->SetComponent(ctNode, 1, array->data(ctNode, 1));
                 grid_->GetPointData()->AddArray(data);
+                updateClipped();
                 auto item = new SbfDataItem(data->GetName(), SbfDataItem::FloatScalar, SbfDataItem::NodeData);
                 item->setData(qVariantFromValue(static_cast<void*>(array)), SbfDataItem::SbfPointerRequest);
                 item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
@@ -172,6 +185,68 @@ void SbfModel::addData(const QString &fileName)
     catch(...) {
     }
     throw std::runtime_error(("Cant interpret file " + fileName.toStdString()).c_str());
+}
+
+void SbfModel::setClipBounds(float xmin, float xmax, float ymin, float ymax, float zmin, float zmax)
+{
+    clipBoxBounds_[0] = xmin;
+    clipBoxBounds_[1] = xmax;
+    clipBoxBounds_[2] = ymin;
+    clipBoxBounds_[3] = ymax;
+    clipBoxBounds_[4] = zmin;
+    clipBoxBounds_[5] = zmax;
+
+    updateClipped();
+}
+
+void SbfModel::unsetClipBounds()
+{
+    for(size_t ct = 0; ct < 3; ++ct){
+        clipBoxBounds_[ct*2+0] = std::numeric_limits<float>::lowest();
+        clipBoxBounds_[ct*2+1] = std::numeric_limits<float>::max();
+    }
+
+    updateClipped();
+}
+
+void SbfModel::clipXPlus()
+{
+    clipBoxBounds_[0] = 0; clipBoxBounds_[1] = std::numeric_limits<float>::max(); updateClipped();
+}
+
+void SbfModel::clipXMinus()
+{
+    clipBoxBounds_[0] = std::numeric_limits<float>::lowest(); clipBoxBounds_[1] = 0; updateClipped();
+}
+
+void SbfModel::clipYPlus()
+{
+    clipBoxBounds_[2] = 0; clipBoxBounds_[3] = std::numeric_limits<float>::max(); updateClipped();
+}
+
+void SbfModel::clipYMinus()
+{
+    clipBoxBounds_[2] = std::numeric_limits<float>::lowest(); clipBoxBounds_[3] = 0; updateClipped();
+}
+
+void SbfModel::clipZPlus()
+{
+    clipBoxBounds_[4] = 0; clipBoxBounds_[5] = std::numeric_limits<float>::max(); updateClipped();
+}
+
+void SbfModel::clipZMinus()
+{
+    clipBoxBounds_[4] = std::numeric_limits<float>::lowest(); clipBoxBounds_[5] = 0; updateClipped();
+}
+
+void SbfModel::updateClipped()
+{
+    clipped_->SetInputData(grid_);
+    clipped_->GenerateClippedOutputOff();
+    clipped_->SetBoxClip(clipBoxBounds_[0], clipBoxBounds_[1],
+                         clipBoxBounds_[2], clipBoxBounds_[3],
+                         clipBoxBounds_[4], clipBoxBounds_[5]);
+    clipped_->Update();
 }
 
 //TODO this is copy from sbfToVTK - should be placed in some .h file

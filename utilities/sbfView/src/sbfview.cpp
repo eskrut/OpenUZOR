@@ -212,6 +212,7 @@ void SbfView::setArrayToMap(QString name, int component)
 {
     int arrayID = -1;
     auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str(), arrayID);
+    bar_->SetDrawTickLabels(true);
     if(cellArray) {
         model_->grid()->GetCellData()->SetScalars(cellArray);
         mapper_->SetInputData(model_->grid());
@@ -221,6 +222,7 @@ void SbfView::setArrayToMap(QString name, int component)
         qDebug() << QString("Cur cell range is") << range[0] << range[1];
         if(cellArray->GetDataType() == VTK_INT) {
             fillMtrLt(cellArray);
+            bar_->SetDrawTickLabels(false);
             mapper_->SetLookupTable(matLt_);
         }
         mapper_->SetScalarRange(range);
@@ -236,9 +238,23 @@ void SbfView::setArrayToMap(QString name, int component)
         auto range = nodeArray->GetRange(component);
         qDebug() << QString("Cur node range is") << range[0] << range[1];
         mapper_->SetScalarRange(range);
-        mapper_->SetLookupTable(nodeArray->GetLookupTable());
         lt_->SetTableRange(range);
+        size_t numColors = 24;
+        lt_->SetNumberOfColors(numColors);
+        for(size_t ct = 0; ct < numColors/2; ++ct){
+            auto r = 0.0;
+            auto g = ct/(numColors/2.0);
+            auto b = (numColors/2-ct)/(numColors/2.0);
+            lt_->SetTableValue(ct, r, g, b);
+        }
+        for(size_t ct = 0; ct < numColors/2; ++ct){
+            auto r = ct/(numColors/2.0);
+            auto g = (numColors/2-ct)/(numColors/2.0);
+            auto b = 0.0;
+            lt_->SetTableValue(ct+numColors/2, r, g, b);
+        }
         lt_->Build();
+        mapper_->SetLookupTable(lt_/*nodeArray->GetLookupTable()*/);
         mapper_->SelectColorArray(arrayID);
         if(component == -1)
             mapper_->GetLookupTable()->SetVectorMode(vtkScalarsToColors::MAGNITUDE);
@@ -252,7 +268,7 @@ void SbfView::setArrayToMap(QString name, int component)
         if(nodeArray->GetNumberOfComponents() == 3) {
             model_->grid()->GetPointData()->SetActiveVectors(name.toStdString().c_str());
             warp_->SetInputData(model_->grid());
-            warp_->SetScaleFactor(1000000000);
+            warp_->SetScaleFactor(1);
             warp_->Update();
             mapper_->SetInputConnection(warp_->GetOutputPort());
         }
@@ -267,7 +283,7 @@ void SbfView::fillMtrLt(vtkDataArray *array)
 {
     matLt_ = vtkLookupTable::New();
     auto range = array->GetRange(0);
-    matLt_->SetNumberOfTableValues(range[1] - range[0] + 2);
+    matLt_->SetNumberOfTableValues(range[1] - range[0] + 1);
     for(int ct = 0/*range[0]*/; ct <= range[1]; ++ct ){
         QColor c = QColor::fromHsv(static_cast<int>(60+57.6*ct + 1.173*ct*ct + 0.027*ct*ct*ct)%360, 255/*230+(25+ct*7)%25*/, 255/*150+(104+ct*19)%105*/);
         matLt_->SetTableValue(ct, c.redF(), c.greenF(), c.blueF());
