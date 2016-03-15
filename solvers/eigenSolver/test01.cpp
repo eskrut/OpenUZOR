@@ -79,8 +79,8 @@ BOOST_AUTO_TEST_CASE(consoleBeam)
     steel->propertyTable("Iz")->setCurParam(24.0f);
     propSet->addMaterial(steel);
 
-    CreateSmartAndRawPtr(sbfStiffMatrixBand6, new sbfStiffMatrixBand6(mesh, propSet), stiff);
-    stiff->computeSequantially();
+    CreateSmartAndRawPtr(sbfStiffMatrixBand<6>, new sbfStiffMatrixBand<6>(mesh, propSet), stiff);
+    stiff->compute();
 
     CreateSmartAndRawPtr(sbfMatrixIterator, stiff->createIterator(), iter);
     double *data = iter->diagonal(0);
@@ -132,8 +132,8 @@ BOOST_AUTO_TEST_CASE(sg)
     NodesData<double, 6> mass("massSg", mesh);
     mass.readFromFile();
 
-    CreateSmartAndRawPtr(sbfStiffMatrixBand6, new sbfStiffMatrixBand6(mesh, propSet), stiff);
-    stiff->computeSequantially();
+    CreateSmartAndRawPtr(sbfStiffMatrixBand<6>, new sbfStiffMatrixBand<6>(mesh, propSet), stiff);
+    stiff->compute();
     BOOST_REQUIRE_MESSAGE(stiff->isValid(), "not valid stiffness");
 
     CreateSmartAndRawPtr(sbfMatrixIterator, stiff->createIterator(), iter);
@@ -203,8 +203,8 @@ BOOST_AUTO_TEST_CASE(tvsat1)
     //        for(int ct1 = 1; ct1 < 6; ct1++) mass.data(ct, ct1) = 750.0/numNodes/1e3;
     //    }
 
-    CreateSmartAndRawPtr(sbfStiffMatrixBand6, new sbfStiffMatrixBand6(mesh, propSet), stiff);
-    stiff->computeSequantially();
+    CreateSmartAndRawPtr(sbfStiffMatrixBand<6>, new sbfStiffMatrixBand<6>(mesh, propSet), stiff);
+    stiff->compute();
     BOOST_REQUIRE_MESSAGE(stiff->isValid(), "not valid stiffness");
 
     sbfGroupFilter down, up;
@@ -272,8 +272,8 @@ BOOST_AUTO_TEST_CASE(tvsat2)
     //        for(int ct1 = 1; ct1 < 6; ct1++) mass.data(ct, ct1) = 750.0/numNodes/1e3;
     //    }
 
-    CreateSmartAndRawPtr(sbfStiffMatrixBand6, new sbfStiffMatrixBand6(mesh, propSet), stiff);
-    stiff->computeSequantially();
+    CreateSmartAndRawPtr(sbfStiffMatrixBand<6>, new sbfStiffMatrixBand<6>(mesh, propSet), stiff);
+    stiff->compute();
     BOOST_REQUIRE_MESSAGE(stiff->isValid(), "not valid stiffness");
 
     sbfGroupFilter down, up;
@@ -341,8 +341,8 @@ BOOST_AUTO_TEST_CASE(tvsat2_2)
     //        for(int ct1 = 1; ct1 < 6; ct1++) mass.data(ct, ct1) = 750.0/numNodes/1e3;
     //    }
 
-    CreateSmartAndRawPtr(sbfStiffMatrixBand6, new sbfStiffMatrixBand6(mesh, propSet), stiff);
-    stiff->computeSequantially();
+    CreateSmartAndRawPtr(sbfStiffMatrixBand<6>, new sbfStiffMatrixBand<6>(mesh, propSet), stiff);
+    stiff->compute();
     BOOST_REQUIRE_MESSAGE(stiff->isValid(), "not valid stiffness");
 
     sbfGroupFilter down, up;
