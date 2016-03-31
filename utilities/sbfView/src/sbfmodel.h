@@ -8,6 +8,7 @@
 #include "vtkBoxClipDataSet.h"
 #include "vtkPoints.h"
 #include "vtkCellArray.h"
+#include "vtkDataArray.h"
 #include "sbfMesh.h"
 #include <array>
 
@@ -32,7 +33,15 @@ private:
 public:
     const sbfMesh *mesh() const { return mesh_; }
     int readModel(const QString &indName, const QString &crdName, const QString &mtrName);
-    void addData(const QString &fileName, const QString &arrayName = QString());
+    enum class GessType {
+        None = 0,
+        NodeFloat,
+        NodeDouble,
+        SolBundleFloat,
+        SolBundleDouble
+    };
+    void addData(const QString &fileName, const QString &arrayName = QString(), GessType gType = GessType::None);
+    vtkDataArray *data(const QString &arrayName) const;
     vtkSmartPointer<vtkUnstructuredGrid> grid() const { return clipped_->GetOutput(); }
     SbfDataModel *dataModel() const { return dataModel_; }
 
@@ -44,6 +53,11 @@ public:
     void clipYMinus();
     void clipZPlus();
     void clipZMinus();
+
+    //FIXME this function added to resolve update of arrays in clipped after update in grid
+    //should be replaced with auto update
+    void updateClippedData();
+
 private:
     void updateClipped();
 signals:

@@ -239,7 +239,7 @@ void SbfView::setArrayToMap(QString name, int component)
         qDebug() << QString("Cur node range is") << range[0] << range[1];
         mapper_->SetScalarRange(range);
         lt_->SetTableRange(range);
-        size_t numColors = 24;
+        size_t numColors = 8;
         lt_->SetNumberOfColors(numColors);
         for(size_t ct = 0; ct < numColors/2; ++ct){
             auto r = 0.0;

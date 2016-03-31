@@ -90,12 +90,14 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
         SbfDataItem *mtrDataItem = new SbfDataItem(mtrData->GetName(), SbfDataItem::Material, SbfDataItem::CellData);
         dataModel_->invisibleRootItem()->appendRow(mtrDataItem);
 
+
+
         updateClipped();
     }
     return status;
 }
 
-void SbfModel::addData(const QString &fileName, const QString &arrayName)
+void SbfModel::addData(const QString &fileName, const QString &arrayName, GessType gType)
 {
     std::string catalog, baseName, suf, aName;
     int numDigits;
@@ -116,75 +118,97 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName)
     if(arrayName.isNull()) aName = baseName;
     else aName = arrayName.toStdString();
     const int numNodes = mesh_->numNodes();
-    try {
-        NodesData<float, 3> *dataF = new NodesData<float, 3>(fileName.toStdString(), mesh_);
-        if(dataF->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
-            throw std::runtime_error("not this type");
-        mesh_->addFVData(dataF);
-        vtkFloatArray *data(vtkFloatArray::New());
-        data->SetName(aName.c_str());
-        data->SetNumberOfComponents(3);
-        data->SetNumberOfTuples(numNodes);
-        for(int ct = 0; ct < 3; ++ct) for(int ctNode = 0; ctNode < numNodes; ++ctNode)
-            data->SetComponent(ctNode, ct, dataF->data(ctNode, ct));
-        grid_->GetPointData()->AddArray(data);
-        updateClipped();
-        auto item = new SbfDataItem(aName.c_str(), SbfDataItem::FloatVector, SbfDataItem::NodeData);
-        item->setData(qVariantFromValue(static_cast<void*>(dataF)), SbfDataItem::SbfPointerRequest);
-        item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
-        dataModel_->invisibleRootItem()->appendRow(item);
-        return;
-    }
-    catch(...) {
-    }
-    try {
-        NodesData<double, 3> *dataD = new NodesData<double, 3>(fileName.toStdString(), mesh_);
-        if(dataD->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
-            throw std::runtime_error("not this type");
-        mesh_->addDVData(dataD);
-        return;
-    }
-    catch(...) {
-    }
-    try {
-        const int numArrays = 20;
-        SolutionBundle<float, numArrays> *Fsol = new SolutionBundle<float>(fileName.toStdString(), mesh_->numNodes());
-        //FIXME this should work with default type in template
-        if(Fsol->readFromFile<float>(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
-            throw std::runtime_error("not this type");
-        mesh_->addSolutionBundle(Fsol);
-        for(int ct = 0; ct < numArrays; ++ct) {
-            auto array = Fsol->array(ct);
-            if(array) {
-                vtkFloatArray *data(vtkFloatArray::New());
-                data->SetName((aName+"/"+Fsol->name(ct)).c_str());
-                data->SetNumberOfComponents(1);
-                data->SetNumberOfTuples(numNodes);
-                for(int ctNode = 0; ctNode < numNodes; ++ctNode)
-                    data->SetComponent(ctNode, 1, array->data(ctNode, 1));
-                grid_->GetPointData()->AddArray(data);
-                updateClipped();
-                auto item = new SbfDataItem(data->GetName(), SbfDataItem::FloatScalar, SbfDataItem::NodeData);
-                item->setData(qVariantFromValue(static_cast<void*>(array)), SbfDataItem::SbfPointerRequest);
-                item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
-                dataModel_->invisibleRootItem()->appendRow(item);
-            }
+    if(gType == GessType::NodeFloat || gType == GessType::None) {
+        try {
+            NodesData<float, 3> *dataF = new NodesData<float, 3>(fileName.toStdString(), mesh_);
+            if(dataF->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
+                throw std::runtime_error("not this type");
+            mesh_->addFVData(dataF);
+            vtkFloatArray *data(vtkFloatArray::New());
+            data->SetName(aName.c_str());
+            data->SetNumberOfComponents(3);
+            data->SetNumberOfTuples(numNodes);
+            for(int ct = 0; ct < 3; ++ct) for(int ctNode = 0; ctNode < numNodes; ++ctNode)
+                data->SetComponent(ctNode, ct, dataF->data(ctNode, ct));
+            grid_->GetPointData()->AddArray(data);
+            updateClipped();
+            auto item = new SbfDataItem(aName.c_str(), SbfDataItem::FloatVector, SbfDataItem::NodeData);
+            item->setData(qVariantFromValue(static_cast<void*>(dataF)), SbfDataItem::SbfPointerRequest);
+            item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
+            dataModel_->invisibleRootItem()->appendRow(item);
+            return;
         }
-        return;
+        catch(...) {
+        }
     }
-    catch(...) {
+    if(gType == GessType::NodeDouble || gType == GessType::None) {
+        try {
+            NodesData<double, 3> *dataD = new NodesData<double, 3>(fileName.toStdString(), mesh_);
+            if(dataD->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
+                throw std::runtime_error("not this type");
+            mesh_->addDVData(dataD);
+            return;
+        }
+        catch(...) {
+        }
     }
-    try {
-        SolutionBundle<double> *Dsol = new SolutionBundle<double>(fileName.toStdString(), mesh_->numNodes());
-        if(Dsol->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
-            throw std::runtime_error("not this type");
-        mesh_->addSolutionBundle(Dsol);
+    if(gType == GessType::SolBundleFloat || gType == GessType::None) {
+        try {
+            const int numArrays = 20;
+            SolutionBundle<float, numArrays> *Fsol = new SolutionBundle<float>(fileName.toStdString(), mesh_->numNodes());
+            //FIXME this should work with default type in template
+            if(Fsol->readFromFile<float>(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
+                throw std::runtime_error("not this type");
+            mesh_->addSolutionBundle(Fsol);
+            for(int ct = 0; ct < numArrays; ++ct) {
+                auto array = Fsol->array(ct);
+                if(array) {
+                    vtkFloatArray *data(vtkFloatArray::New());
+                    data->SetName((aName+"/"+Fsol->name(ct)).c_str());
+                    data->SetNumberOfComponents(1);
+                    data->SetNumberOfTuples(numNodes);
+                    for(int ctNode = 0; ctNode < numNodes; ++ctNode)
+                        data->SetComponent(ctNode, 1, array->data(ctNode, 1));
+                    grid_->GetPointData()->AddArray(data);
+                    updateClipped();
+                    auto item = new SbfDataItem(data->GetName(), SbfDataItem::FloatScalar, SbfDataItem::NodeData);
+                    item->setData(qVariantFromValue(static_cast<void*>(array)), SbfDataItem::SbfPointerRequest);
+                    item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
+                    dataModel_->invisibleRootItem()->appendRow(item);
+                }
+            }
+            return;
+        }
+        catch(...) {
+        }
+    }
+    if(gType == GessType::SolBundleDouble || gType == GessType::None) {
+        try {
+            SolutionBundle<double> *Dsol = new SolutionBundle<double>(fileName.toStdString(), mesh_->numNodes());
+            if(Dsol->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
+                throw std::runtime_error("not this type");
+            mesh_->addSolutionBundle(Dsol);
 
-        return;
-    }
-    catch(...) {
+            return;
+        }
+        catch(...) {
+        }
     }
     throw std::runtime_error(("Cant interpret file " + fileName.toStdString()).c_str());
+}
+
+vtkDataArray *SbfModel::data(const QString &arrayName) const
+{
+    int arrayID = -1;
+    auto cellArray = grid_->GetCellData()->GetArray(arrayName.toStdString().c_str(), arrayID);
+    if(cellArray) {
+        return cellArray;
+    }
+    auto nodeArray = grid_->GetPointData()->GetArray(arrayName.toStdString().c_str(), arrayID);
+    if(nodeArray) {
+        return nodeArray;
+    }
+    return nullptr;
 }
 
 void SbfModel::setClipBounds(float xmin, float xmax, float ymin, float ymax, float zmin, float zmax)
@@ -239,9 +263,17 @@ void SbfModel::clipZMinus()
     clipBoxBounds_[4] = std::numeric_limits<float>::lowest(); clipBoxBounds_[5] = 0; updateClipped();
 }
 
+void SbfModel::updateClippedData()
+{
+    updateClipped();
+}
+
 void SbfModel::updateClipped()
 {
+    //TODO make normal arrays update in clipped
+    clipped_->SetInputData(nullptr);
     clipped_->SetInputData(grid_);
+    clipped_->Update();
     clipped_->GenerateClippedOutputOff();
     clipped_->SetBoxClip(clipBoxBounds_[0], clipBoxBounds_[1],
                          clipBoxBounds_[2], clipBoxBounds_[3],
