@@ -168,7 +168,7 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
                     data->SetNumberOfComponents(1);
                     data->SetNumberOfTuples(numNodes);
                     for(int ctNode = 0; ctNode < numNodes; ++ctNode)
-                        data->SetComponent(ctNode, 1, array->data(ctNode, 1));
+                        data->SetComponent(ctNode, 0, array->data(ctNode, 0));
                     grid_->GetPointData()->AddArray(data);
                     updateClipped();
                     auto item = new SbfDataItem(data->GetName(), SbfDataItem::FloatScalar, SbfDataItem::NodeData);
