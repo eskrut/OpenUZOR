@@ -13,7 +13,8 @@ public:
         FloatVector,
         DoubleVector,
         FloatScalar,
-        DoubleScalar
+        DoubleScalar,
+        Any = QStandardItem::UserType + 1000,
     };
 
     enum VtkType {
