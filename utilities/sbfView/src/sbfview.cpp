@@ -208,7 +208,7 @@ void SbfView::setWarpFactor(double factor)
     warp_->Update();
 }
 
-void SbfView::setArrayToMap(QString name, int component)
+void SbfView::setArrayToMap(QString name, int component, double low, double high)
 {
     int arrayID = -1;
     auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str(), arrayID);
@@ -219,6 +219,10 @@ void SbfView::setArrayToMap(QString name, int component)
         mapper_->SetScalarModeToUseCellData();
         mapper_->SelectColorArray(arrayID);
         auto range = cellArray->GetRange(component);
+        if( ! std::isnan(low) && ! std::isnan(high) ) {
+            range[0] = low;
+            range[1] = high;
+        }
         qDebug() << QString("Cur cell range is") << range[0] << range[1];
         if(cellArray->GetDataType() == VTK_INT) {
             fillMtrLt(cellArray);
@@ -236,6 +240,10 @@ void SbfView::setArrayToMap(QString name, int component)
     if(nodeArray) {
         mapper_->SetScalarMode(VTK_SCALAR_MODE_USE_POINT_FIELD_DATA);
         auto range = nodeArray->GetRange(component);
+        if( ! std::isnan(low) && ! std::isnan(high) ) {
+            range[0] = low;
+            range[1] = high;
+        }
         qDebug() << QString("Cur node range is") << range[0] << range[1];
         mapper_->SetScalarRange(range);
         lt_->SetTableRange(range);

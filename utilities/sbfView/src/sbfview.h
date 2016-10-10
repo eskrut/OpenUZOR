@@ -50,7 +50,9 @@ public slots:
     double warpFactor() const;
     void setWarpFactor(double factor);
 
-    void setArrayToMap(QString name, int component = -1);
+    void setArrayToMap(QString name, int component = -1,
+                       double low = std::numeric_limits<double>::quiet_NaN(),
+                       double high = std::numeric_limits<double>::quiet_NaN());
 private:
     void fillMtrLt(vtkDataArray *array);
 };

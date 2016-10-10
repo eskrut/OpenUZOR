@@ -9,7 +9,9 @@ SbfToolBar::SbfToolBar(SbfDataModel *dataModel, QWidget *parent) :
     dataModel_(dataModel)
 {
     dataBox_ = new QComboBox(this);
-    dataBox_->setModel(dataModel_);
+    proxy_ = new ProxyFilter(this);
+    proxy_->setSourceModel(dataModel_);
+    dataBox_->setModel(proxy_);
     addWidget(dataBox_);
 
     componentBox_ = new QComboBox(this);
@@ -40,8 +42,18 @@ SbfToolBar::SbfToolBar(SbfDataModel *dataModel, QWidget *parent) :
     });
 }
 
+QString SbfToolBar::currentName() const {
+    return proxy_->mapToSource(proxy_->index(dataBox_->currentIndex(), 0)).data().toString();
+}
+
+void SbfToolBar::addAllowed(const QString &field)
+{
+    proxy_->addAllowed(field);
+}
+
 void SbfToolBar::onArrayChanged(int ID)
 {
+    ID = proxy_->mapToSource(proxy_->index(ID, 0)).row();
     SbfDataItem *item = reinterpret_cast<SbfDataItem*>(dataModel_->invisibleRootItem()->child(ID));
     if( item->data(SbfDataItem::Role::VtkTypeRequest).toInt() == static_cast<int>(SbfDataItem::VtkType::NodeData))
     {
