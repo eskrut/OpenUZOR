@@ -51,6 +51,11 @@ void SbfToolBar::addAllowed(const QString &field)
     proxy_->addAllowed(field);
 }
 
+void SbfToolBar::setWarpFactor(double warp)
+{
+    warpScaleLE_->setText(QString::number(warp));
+}
+
 void SbfToolBar::onArrayChanged(int ID)
 {
     ID = proxy_->mapToSource(proxy_->index(ID, 0)).row();

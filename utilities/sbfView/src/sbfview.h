@@ -29,6 +29,7 @@ private:
     vtkSmartPointer<vtkLookupTable> matLt_;
     vtkSmartPointer<vtkDataSetMapper> mapper_;
     vtkSmartPointer<vtkWarpVector> warp_;
+    double warpFactor_;
 
 public:
     void setModel(SbfModel *model);

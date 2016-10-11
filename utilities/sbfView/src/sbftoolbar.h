@@ -35,6 +35,7 @@ signals:
     void warpFactorChanged(double);
 
 public slots:
+    void setWarpFactor(double warp);
 private slots:
     void onArrayChanged(int ID);
 

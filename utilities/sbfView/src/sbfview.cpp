@@ -204,6 +204,7 @@ double SbfView::warpFactor() const
 
 void SbfView::setWarpFactor(double factor)
 {
+    warpFactor_ = factor;
     warp_->SetScaleFactor(factor);
     warp_->Update();
 }
@@ -276,7 +277,7 @@ void SbfView::setArrayToMap(QString name, int component, double low, double high
         if(nodeArray->GetNumberOfComponents() == 3) {
             model_->grid()->GetPointData()->SetActiveVectors(name.toStdString().c_str());
             warp_->SetInputData(model_->grid());
-            warp_->SetScaleFactor(1);
+            warp_->SetScaleFactor(warpFactor_);
             warp_->Update();
             mapper_->SetInputConnection(warp_->GetOutputPort());
         }
