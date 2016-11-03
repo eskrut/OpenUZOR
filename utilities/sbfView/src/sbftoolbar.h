@@ -65,6 +65,8 @@ protected:
             return true;
         else if(rejected_.contains(cur, Qt::CaseInsensitive))
             return false;
+        else if(allowed_.size() == 0 && rejected_.size() == 0)
+            return true;
         return false;
     }
 };

@@ -40,7 +40,10 @@ public:
         SolBundleFloat,
         SolBundleDouble
     };
-    void addData(const QString &fileName, const QString &arrayName = QString(), GessType gType = GessType::None);
+    void addData(const QString &fileName,
+                 const QString &arrayName = QString(),
+                 GessType gType = GessType::None,
+                 int numPlaceholders = -1);
     vtkDataArray *data(const QString &arrayName) const;
     vtkSmartPointer<vtkUnstructuredGrid> grid() const { return clipped_->GetOutput(); }
     SbfDataModel *dataModel() const { return dataModel_; }

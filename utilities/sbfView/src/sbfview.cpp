@@ -109,6 +109,12 @@ void SbfView::setModel(SbfModel *model)
     lightKit->SetKeyLightIntensity(0.8);
 }
 
+void SbfView::setFixedRange(const QString &name, int component, double low, double height)
+{
+    fixedRanges_.insert(std::make_pair(name.toStdString(), component),
+                        std::make_pair(low, height));
+}
+
 void SbfView::resetView()
 {
     renderer_->ResetCamera();
@@ -209,7 +215,7 @@ void SbfView::setWarpFactor(double factor)
     warp_->Update();
 }
 
-void SbfView::setArrayToMap(QString name, int component, double low, double high)
+void SbfView::setArrayToMap(QString name, int component)
 {
     int arrayID = -1;
     auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str(), arrayID);
@@ -220,11 +226,11 @@ void SbfView::setArrayToMap(QString name, int component, double low, double high
         mapper_->SetScalarModeToUseCellData();
         mapper_->SelectColorArray(arrayID);
         auto range = cellArray->GetRange(component);
-        if( ! std::isnan(low) && ! std::isnan(high) ) {
-            range[0] = low;
-            range[1] = high;
+        auto rangeIt = fixedRanges_.find(std::make_pair(name.toStdString(), component));
+        if( rangeIt != fixedRanges_.end() ) {
+            range[0] = rangeIt->first;
+            range[1] = rangeIt->second;
         }
-        qDebug() << QString("Cur cell range is") << range[0] << range[1];
         if(cellArray->GetDataType() == VTK_INT) {
             fillMtrLt(cellArray);
             bar_->SetDrawTickLabels(false);
@@ -241,11 +247,11 @@ void SbfView::setArrayToMap(QString name, int component, double low, double high
     if(nodeArray) {
         mapper_->SetScalarMode(VTK_SCALAR_MODE_USE_POINT_FIELD_DATA);
         auto range = nodeArray->GetRange(component);
-        if( ! std::isnan(low) && ! std::isnan(high) ) {
-            range[0] = low;
-            range[1] = high;
+        auto rangeIt = fixedRanges_.find(std::make_pair(name.toStdString(), component));
+        if( rangeIt != fixedRanges_.end() ) {
+            range[0] = rangeIt->first;
+            range[1] = rangeIt->second;
         }
-        qDebug() << QString("Cur node range is") << range[0] << range[1];
         mapper_->SetScalarRange(range);
         lt_->SetTableRange(range);
         size_t numColors = 8;

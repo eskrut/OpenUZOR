@@ -10,6 +10,7 @@
 #include "vtkWarpVector.h"
 #include "vtkLookupTable.h"
 #include "vtkGeometryFilter.h"
+#include <QMap>
 #include <array>
 
 class SbfModel;
@@ -30,9 +31,11 @@ private:
     vtkSmartPointer<vtkDataSetMapper> mapper_;
     vtkSmartPointer<vtkWarpVector> warp_;
     double warpFactor_;
+    QMap<std::pair<std::string, int>, std::pair<double, double>> fixedRanges_;
 
 public:
     void setModel(SbfModel *model);
+    void setFixedRange(const QString &name, int component, double low, double height);
 signals:
 
 public slots:
@@ -51,9 +54,7 @@ public slots:
     double warpFactor() const;
     void setWarpFactor(double factor);
 
-    void setArrayToMap(QString name, int component = -1,
-                       double low = std::numeric_limits<double>::quiet_NaN(),
-                       double high = std::numeric_limits<double>::quiet_NaN());
+    void setArrayToMap(QString name, int component = -1);
 private:
     void fillMtrLt(vtkDataArray *array);
 };

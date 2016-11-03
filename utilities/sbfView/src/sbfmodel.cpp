@@ -97,7 +97,7 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
     return status;
 }
 
-void SbfModel::addData(const QString &fileName, const QString &arrayName, GessType gType)
+void SbfModel::addData(const QString &fileName, const QString &arrayName, GessType gType, int numPlaceholders)
 {
     std::string catalog, baseName, suf, aName;
     int numDigits;
@@ -113,6 +113,11 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
     QString leadingZeros = re.cap(1);
     QString count = re.cap(2);
     numDigits = leadingZeros.size() + count.size();
+    if(numPlaceholders > 0) {
+        if (numPlaceholders < numDigits)
+            count = count.right(numPlaceholders);
+        numDigits = numPlaceholders;
+    }
     baseName = fi.baseName().toStdString();
     baseName.erase(baseName.size()-numDigits);
     if(arrayName.isNull()) aName = baseName;
