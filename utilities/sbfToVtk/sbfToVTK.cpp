@@ -72,7 +72,10 @@ void sbfToVTKWriter::check()
         fileNameStream.str("");
         fileNameStream << catalog_ << *it;
         testFile.open(fileNameStream.str().c_str(), std::ios_base::binary);
-        if(!testFile.good()) flagValidNames_ = false;
+        if(!testFile.good()) {
+            flagValidNames_ = false;
+            report("Cant read file", fileNameStream.str());
+        }
         testFile.close();
         fileNameStream.str("");
     }
@@ -112,7 +115,10 @@ int sbfToVTKWriter::write()
 {
     cout << "Started" << endl;
     check();
-    if(!flagValidNames_) return 1;
+    if(!flagValidNames_) {
+        report.error("Not valid files. Abort.");
+        return 1;
+    }
 
     std::auto_ptr<sbfMesh> mesh(new sbfMesh ());
     std::stringstream fullIName, fullCName, fullMName;
