@@ -41,6 +41,7 @@ signals:
 public slots:
     void resetView();
     void setView(const std::array<double, 3> &position, const std::array<double, 3> &up);
+    void setViewAngleHeight(float angle, float height = 1);
     void setViewXY();
     void setViewYZ();
     void setViewZX();
@@ -50,6 +51,8 @@ public slots:
     void rotateViewScreenY(double angle);
     bool edgeVisible();
     void setEdgeVisible(bool on);
+    void setEdgeWidth(int w);
+    void setOpacity(float opacity);
 
     double warpFactor() const;
     void setWarpFactor(double factor);

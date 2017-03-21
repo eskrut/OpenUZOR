@@ -20,6 +20,8 @@
 #include "vtkLightCollection.h"
 #include "vtkLightKit.h"
 
+#include "vtkDepthSortPolyData.h"
+
 #include <cmath>
 
 #include <QDebug>
@@ -66,16 +68,19 @@ void SbfView::setModel(SbfModel *model)
     matLt_->Build();
     warp_->SetInputData(model_->grid());
     warp_->SetScaleFactor(1);
-    mapper_->SetInputData(model_->grid());
+
+    mapper_->SetInputConnection(warp_->GetOutputPort());
+
     mapper_->SetLookupTable(lt_);
     auto range = model_->grid()->GetScalarRange();
-    qDebug() << QString("Cur range is") << range[0] << range[1];
     mapper_->ImmediateModeRenderingOn();
     mapper_->SetScalarRange(range);
     bar_->SetLookupTable(mapper_->GetLookupTable());
     bar_->SetTitle("Materials");
     bar_->GetLabelTextProperty()->SetColor(0, 0, 0);
     bar_->GetTitleTextProperty()->SetColor(0, 0, 0);
+    bar_->GetTitleTextProperty()->SetFontSize(5);
+    bar_->GetLabelTextProperty()->SetFontSize(5);
     bar_->SetHeight(0.5);
     bar_->SetWidth(0.1);
     actor_ = vtkActor::New();
@@ -84,6 +89,7 @@ void SbfView::setModel(SbfModel *model)
     auto pos = actor_->GetPosition();
     actor_->SetPosition(pos[0]-(bounds[1] + bounds[0])/2, pos[1]-(bounds[3] + bounds[2])/2, pos[2]-(bounds[5] + bounds[4])/2);
     actor_->SetOrigin(0, 0, 0);
+    actor_->GetProperty()->SetRepresentationToSurface();
     renderer_->AddActor(actor_);
     renderer_->AddActor(bar_);
     setViewXYZ();
@@ -91,22 +97,9 @@ void SbfView::setModel(SbfModel *model)
 
     update();
 
-//    qDebug() << renderer_->GetLights()->GetNumberOfItems();
-
-//    vtkLight *light = vtkLight::New();
-//    light->SetLightTypeToSceneLight();
-//    light->SetPosition(10, 10, 10);
-////    light->SetPositional(true); // required for vtkLightActor below
-//    light->SetConeAngle(10);
-//    light->SetFocalPoint(0, 0, 0);
-//    light->SetDiffuseColor(1,1,1);
-//    light->SetAmbientColor(1,1,1);
-//    light->SetSpecularColor(1,1,1);
-
-//    renderer_->AddLight(light);
     vtkLightKit *lightKit = vtkLightKit::New();
     lightKit->AddLightsToRenderer(renderer_);
-    lightKit->SetKeyLightIntensity(0.8);
+    lightKit->SetKeyLightIntensity(1.0);
 }
 
 void SbfView::setFixedRange(const QString &name, int component, double low, double height)
@@ -124,8 +117,16 @@ void SbfView::setView(const std::array<double, 3> &position, const std::array<do
 {
     cam_->SetPosition(position.data());
     cam_->SetViewUp(up.data());
+    cam_->UpdateViewport(renderer_);
     renderer_->ResetCamera();
     update();
+}
+
+void SbfView::setViewAngleHeight(float angle, float height) {
+    float x = std::sin(angle / 180.0 * std::atan(1)*4);
+    float y = std::cos(angle / 180.0 * std::atan(1)*4);
+    float z = height;
+    setView({x, y, z}, {x, y, 2*z});
 }
 
 void SbfView::setViewXY()
@@ -145,7 +146,7 @@ void SbfView::setViewZX()
 
 void SbfView::setViewXYZ()
 {
-    setView({1, 1, 1}, {-std::sqrt(3), -std::sqrt(3), 2*std::sqrt(3)});
+    setView({2, 2, 2}, {-std::sqrt(3), -std::sqrt(3), 2*std::sqrt(3)});
 }
 
 void SbfView::rotateView(const std::array<double, 3> &axis, double angle)
@@ -203,6 +204,16 @@ void SbfView::setEdgeVisible(bool on)
     update();
 }
 
+void SbfView::setEdgeWidth(int w)
+{
+    actor_->GetProperty()->SetLineWidth(w);
+}
+
+void SbfView::setOpacity(float opacity)
+{
+    actor_->GetProperty()->SetOpacity(opacity);
+}
+
 double SbfView::warpFactor() const
 {
     return warp_->GetScaleFactor();
@@ -254,19 +265,34 @@ void SbfView::setArrayToMap(QString name, int component)
         }
         mapper_->SetScalarRange(range);
         lt_->SetTableRange(range);
-        size_t numColors = 8;
+        size_t numColors = 16;
+        auto getLinear = [](float x0, float x1, float y0, float y1, float xcur){
+            return y0 + (y1 - y0)/(x1 - x0)*(xcur - x0);
+        };
         lt_->SetNumberOfColors(numColors);
-        for(size_t ct = 0; ct < numColors/2; ++ct){
-            auto r = 0.0;
-            auto g = ct/(numColors/2.0);
-            auto b = (numColors/2-ct)/(numColors/2.0);
+        float r = 0;
+        float g = 0;
+        float b = 1;
+        for(size_t ct = 0; ct < numColors; ++ct){
+            float fraction = static_cast<float>(ct)/numColors;
+            if( fraction <= 0.25) {
+                r = 0; b = 1;
+                g = getLinear(0, 0.25, 0, 1, fraction);
+            }
+            else if( fraction <= 0.5) {
+                r = 0; g = 1;
+                b = getLinear(0.25, 0.5, 1, 0, fraction);
+            }
+            else if( fraction <= 0.75) {
+                b = 0; g = 1;
+                r = getLinear(0.5, 0.75, 0, 1, fraction);
+            }
+            else if( fraction <= 1.0) {
+                b = 0; r = 1;
+                g = getLinear(0.75, 1.0, 1, 0, fraction);
+            }
+            else throw std::logic_error("Should not be possible");
             lt_->SetTableValue(ct, r, g, b);
-        }
-        for(size_t ct = 0; ct < numColors/2; ++ct){
-            auto r = ct/(numColors/2.0);
-            auto g = (numColors/2-ct)/(numColors/2.0);
-            auto b = 0.0;
-            lt_->SetTableValue(ct+numColors/2, r, g, b);
         }
         lt_->Build();
         mapper_->SetLookupTable(lt_/*nodeArray->GetLookupTable()*/);

@@ -40,6 +40,33 @@ SbfToolBar::SbfToolBar(SbfDataModel *dataModel, QWidget *parent) :
     connect(warpScaleLE_, &QLineEdit::textChanged, [=](const QString &text){
         warpFactorChanged(text.toDouble());
     });
+
+    //Step controller
+    stepWidget_ = new QWidget();
+    stepID_ = new QSpinBox(stepWidget_);
+    stepID_->setRange(0, 0);
+    stepID_->setValue(0);
+    stepFirst_ = new QToolButton(stepWidget_);
+    stepFirst_->setText("First");
+    stepFirst_->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
+    stepPrev_ = new QToolButton(stepWidget_);
+    stepPrev_->setText("Prev");
+    stepPrev_->setIcon(style()->standardIcon(QStyle::SP_ArrowLeft));
+    stepNext_ = new QToolButton(stepWidget_);
+    stepNext_->setText("Next");
+    stepNext_->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
+    stepLast_ = new QToolButton(stepWidget_);
+    stepLast_->setText("Last");
+    stepLast_->setIcon(style()->standardIcon(QStyle::SP_ArrowForward));
+    auto stepLO = new QHBoxLayout(stepWidget_);
+    stepLO->setMargin(0);
+    stepWidget_->setLayout(stepLO);
+    stepLO->addWidget(stepFirst_);
+    stepLO->addWidget(stepPrev_);
+    stepLO->addWidget(stepID_);
+    stepLO->addWidget(stepNext_);
+    stepLO->addWidget(stepLast_);
+    stepAct_ = addWidget(stepWidget_);
 }
 
 QString SbfToolBar::currentName() const {
@@ -68,4 +95,9 @@ void SbfToolBar::onArrayChanged(int ID)
             wAct_->setVisible(false);
     }
     else wAct_->setVisible(false);
+}
+
+void SbfToolBar::setDataSteps(int first, int cur, int last)
+{
+
 }

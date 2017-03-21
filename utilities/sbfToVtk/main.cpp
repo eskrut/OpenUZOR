@@ -41,8 +41,12 @@ int main (int argc, char ** argv)
     while(getline(sstr, entry, ','))
         nodesDataNames.push_back(entry);
     sstr.str(solBundleNamesStr);
-    while(getline(sstr, entry, ','))
-        solBundleNames.push_back(entry);
+    if(std::find(solBundleNamesStr.begin(), solBundleNamesStr.end(), ',') != solBundleNamesStr.end())
+        while(getline(sstr, entry, ',')) {
+            solBundleNames.push_back(entry);
+        }
+    else
+        solBundleNames.push_back(solBundleNamesStr);
 
     if (vm.count("help") || vm.count("h")) { std::cout << desc << "\n"; return 1; }
 

@@ -15,6 +15,11 @@ QStringList SbfDataModel::names(SbfDataItem::Type type) const
     return ns;
 }
 
+void SbfDataModel::addStepData(const QString &displayName, const QString &baseName, int numDigits, const QString &extention, int curIndex)
+{
+    stepDataMap[displayName] = StepData(baseName, numDigits, extention, curIndex);
+}
+
 QList<SbfDataItem *> SbfDataModel::items(SbfDataItem::Type type) const
 {
     QList<SbfDataItem *> its;

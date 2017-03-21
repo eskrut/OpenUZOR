@@ -6,6 +6,7 @@
 #include "vtkSmartPointer.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkBoxClipDataSet.h"
+#include "vtkClipPolyData.h"
 #include "vtkPoints.h"
 #include "vtkCellArray.h"
 #include "vtkDataArray.h"
@@ -23,7 +24,7 @@ public:
 private:
     QSettings *settings_;
     vtkSmartPointer<vtkUnstructuredGrid> grid_;
-    vtkSmartPointer<vtkBoxClipDataSet> clipped_;
+    vtkSmartPointer<vtkClipPolyData/*vtkBoxClipDataSet*/> clipped_;
     std::array<float, 6> clipBoxBounds_;
     vtkSmartPointer<vtkPoints> points_;
     vtkSmartPointer<vtkCellArray> cells_;
@@ -43,9 +44,13 @@ public:
     void addData(const QString &fileName,
                  const QString &arrayName = QString(),
                  GessType gType = GessType::None,
-                 int numPlaceholders = -1);
+                 int numPlaceholders = -1,
+                 const std::list<std::string> &names = std::list<std::string>({})
+                 );
     vtkDataArray *data(const QString &arrayName) const;
-    vtkSmartPointer<vtkUnstructuredGrid> grid() const { return clipped_->GetOutput(); }
+    vtkSmartPointer<vtkPolyData/*vtkUnstructuredGrid*/> grid() const { return clipped_->GetClippedOutput(); }
+    vtkPoints *points() const {return points_;}
+    vtkCellArray *cells() const {return cells_;}
     SbfDataModel *dataModel() const { return dataModel_; }
 
     void setClipBounds(float xmin, float xmax, float ymin, float ymax, float zmin, float zmax);

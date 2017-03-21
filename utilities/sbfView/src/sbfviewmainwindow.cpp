@@ -106,6 +106,9 @@ void SbfViewMainWindow::initializeShortCuts()
         view_->rotateViewScreenY(-settings_->value("defaultRot", 10).toDouble());
     });
 
+    auto quitShC = new QShortcut(QKeySequence("Ctrl+Q"), this);
+    connect(quitShC, &QShortcut::activated, this, &SbfViewMainWindow::close);
+
     auto toggleTest = new QShortcut(QKeySequence("Ctrl+T"), this);
     connect(toggleTest, &QShortcut::activated, [=](){
         //Make simple test mesh

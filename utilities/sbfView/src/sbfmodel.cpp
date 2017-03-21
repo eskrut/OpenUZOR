@@ -1,12 +1,14 @@
 #include "sbfmodel.h"
 #include <QFileInfo>
 #include <QSettings>
+#include <vtkGeometryFilter.h>
 #include "sbfNode.h"
 #include "sbfElement.h"
 #include "vtkCellData.h"
 #include "vtkPointData.h"
 #include "vtkIntArray.h"
 #include "vtkFloatArray.h"
+#include "vtkBox.h"
 #include "sbfdatamodel.h"
 #include "sbfdataitem.h"
 
@@ -15,7 +17,7 @@ SbfModel::SbfModel(QObject *parent, QSettings *settings) :
     settings_(settings)
 {
     grid_ = vtkUnstructuredGrid::New();
-    clipped_ = vtkBoxClipDataSet::New();
+    clipped_ = vtkClipPolyData::New();/*vtkBoxClipDataSet::New();*/
     points_ = vtkPoints::New();
     cells_ = vtkCellArray::New();
     mesh_ = new sbfMesh;
@@ -58,6 +60,7 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
         settings_->endGroup();
     }
     if(status == 0) {
+        mesh_->printInfo();
         const int numNodes = mesh_->numNodes();
         points_->SetNumberOfPoints(numNodes);
         for(int ct = 0; ct < numNodes; ++ct) {
@@ -90,14 +93,12 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
         SbfDataItem *mtrDataItem = new SbfDataItem(mtrData->GetName(), SbfDataItem::Material, SbfDataItem::CellData);
         dataModel_->invisibleRootItem()->appendRow(mtrDataItem);
 
-
-
         updateClipped();
     }
     return status;
 }
 
-void SbfModel::addData(const QString &fileName, const QString &arrayName, GessType gType, int numPlaceholders)
+void SbfModel::addData(const QString &fileName, const QString &arrayName, GessType gType, int numPlaceholders, const std::list<std::string> &names)
 {
     std::string catalog, baseName, suf, aName;
     int numDigits;
@@ -141,6 +142,10 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
             item->setData(qVariantFromValue(static_cast<void*>(dataF)), SbfDataItem::SbfPointerRequest);
             item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
             dataModel_->invisibleRootItem()->appendRow(item);
+            auto baseN = QString::fromStdString(catalog);
+            if(baseN.size()) baseN += "/";
+            baseN.append(QString::fromStdString(baseName));
+            dataModel_->addStepData(QString::fromStdString(aName), baseN, numDigits, ".sba", count.toInt());
             return;
         }
         catch(...) {
@@ -152,6 +157,9 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
             if(dataD->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
                 throw std::runtime_error("not this type");
             mesh_->addDVData(dataD);
+
+            report.error("Not implemented", "SbfModel::addData NodesData<double, 3>");
+
             return;
         }
         catch(...) {
@@ -165,11 +173,13 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
             if(Fsol->readFromFile<float>(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
                 throw std::runtime_error("not this type");
             mesh_->addSolutionBundle(Fsol);
+            bool useProvidedNames = names.size() == numArrays ? true : false;
+            auto it = names.begin();
             for(int ct = 0; ct < numArrays; ++ct) {
                 auto array = Fsol->array(ct);
                 if(array) {
                     vtkFloatArray *data(vtkFloatArray::New());
-                    data->SetName((aName+"/"+Fsol->name(ct)).c_str());
+                    data->SetName((aName+"/"+ (useProvidedNames ? *(it++) : Fsol->name(ct))).c_str());
                     data->SetNumberOfComponents(1);
                     data->SetNumberOfTuples(numNodes);
                     for(int ctNode = 0; ctNode < numNodes; ++ctNode)
@@ -193,6 +203,8 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
             if(Dsol->readFromFile(baseName.c_str(), count.toInt(), ".sba", numDigits, catalog.c_str()) != 0)
                 throw std::runtime_error("not this type");
             mesh_->addSolutionBundle(Dsol);
+
+            report.error("Not implemented", "SbfModel::addData SolutionBundle<double>");
 
             return;
         }
@@ -277,12 +289,22 @@ void SbfModel::updateClipped()
 {
     //TODO make normal arrays update in clipped
     clipped_->SetInputData(nullptr);
-    clipped_->SetInputData(grid_);
+    vtkSmartPointer<vtkGeometryFilter> geometryFilter =
+        vtkSmartPointer<vtkGeometryFilter>::New();
+    geometryFilter->SetInputData(grid_);
+    geometryFilter->Update();
+    clipped_->SetInputData(geometryFilter->GetOutput());
     clipped_->Update();
-    clipped_->GenerateClippedOutputOff();
-    clipped_->SetBoxClip(clipBoxBounds_[0], clipBoxBounds_[1],
-                         clipBoxBounds_[2], clipBoxBounds_[3],
-                         clipBoxBounds_[4], clipBoxBounds_[5]);
+    clipped_->GenerateClippedOutputOn();
+//    clipped_->SetBoxClip(clipBoxBounds_[0], clipBoxBounds_[1],
+//                         clipBoxBounds_[2], clipBoxBounds_[3],
+//                         clipBoxBounds_[4], clipBoxBounds_[5]);
+    auto box = vtkBox::New();
+    box->SetBounds(clipBoxBounds_[0], clipBoxBounds_[1],
+            clipBoxBounds_[2], clipBoxBounds_[3],
+            clipBoxBounds_[4], clipBoxBounds_[5]);
+    clipped_->SetClipFunction(box);
+
     clipped_->Update();
 }
 

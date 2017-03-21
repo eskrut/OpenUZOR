@@ -7,6 +7,7 @@
 #include <QLineEdit>
 #include <QAction>
 #include <QSortFilterProxyModel>
+#include <QSpinBox>
 #include "sbfdatamodel.h"
 
 class ProxyFilter;
@@ -25,6 +26,7 @@ private:
     QToolButton *warpOnButton_;
     QLineEdit *warpScaleLE_;
     QAction *wAct_;
+
 public:
     QString currentName() const;
     int currentComponent() const { return componentBox_->currentIndex() - 1; }
@@ -38,6 +40,20 @@ public slots:
     void setWarpFactor(double warp);
 private slots:
     void onArrayChanged(int ID);
+
+private:
+    //Step controller
+    QWidget *stepWidget_;
+    QSpinBox *stepID_;
+    QToolButton *stepFirst_;
+    QToolButton *stepPrev_;
+    QToolButton *stepNext_;
+    QToolButton *stepLast_;
+    QAction *stepAct_;
+public slots:
+    void setDataSteps(int first, int cur, int last);
+signals:
+    void stepChanged(int id);
 
 };
 

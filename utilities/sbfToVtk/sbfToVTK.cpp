@@ -122,6 +122,7 @@ int sbfToVTKWriter::write()
 
     std::auto_ptr<sbfMesh> mesh(new sbfMesh ());
     std::stringstream fullIName, fullCName, fullMName;
+    std::map<std::string, std::pair<int, int>> writedSteps;
     fullIName << catalog_ << namePrefix_ + indName_;
     fullCName << catalog_ << namePrefix_ + crdName_;
     fullMName << catalog_ << mtrName_;
@@ -219,6 +220,8 @@ int sbfToVTKWriter::write()
                 nodesData->setStep(stepCount);
                 int readRez = nodesData->readFromFile<sbfReadWriteType>();
                 if(readRez == 0){
+                    if( !writedSteps.count((*it).base) ) writedSteps[(*it).base] = std::make_pair(stepCount, stepCount);
+                    else writedSteps[(*it).base].second = stepCount;
                     int index;
                     vtkDataArray * darray = grid->GetPointData()->GetArray((*it).base.c_str(), index);
                     if(index > -1) darray->Delete();
@@ -255,10 +258,12 @@ int sbfToVTKWriter::write()
                 solBundle->setNumDigits((*it).numDigits);
                 int readRez = solBundle->readFromFile<sbfReadWriteType>();
                 if(readRez == 0){
+                    if( !writedSteps.count((*it).base) ) writedSteps[(*it).base] = std::make_pair(stepCount, stepCount);
+                    else writedSteps[(*it).base].second = stepCount;
                     for(int ct = 0; ct < nuArrays; ct++){
                         int index;
                         NodesData<sbfReadWriteType, 1> * data = solBundle->array(ct);
-                        std::cout << ((*it).base + solBundle->name(ct)).c_str() << std::endl;
+//                        std::cout << ((*it).base + solBundle->name(ct)).c_str() << std::endl;
                         std::string arrName = (*it).base + solBundle->name(ct);
                         vtkDataArray * darray = grid->GetPointData()->GetArray(arrName.c_str(), index);
                         if(index > -1) darray->Delete();
@@ -301,6 +306,8 @@ int sbfToVTKWriter::write()
                 fileNameStream << catalog_ << "/" << namePrefix_ + mtrBaseName_ << std::setw(mtrNumDigits_) << std::setfill('0') << stepCount << "." << sbaExtention_;
                 std::ifstream mtrFile(fileNameStream.str().c_str(), std::ios_base::binary);
                 if(mtrFile.good()){
+                    if( !writedSteps.count(mtrBaseName_) ) writedSteps[mtrBaseName_] = std::make_pair(stepCount, stepCount);
+                    else writedSteps[mtrBaseName_].second = stepCount;
                     std::vector<int> mtr;
                     mtr.resize(mesh->numElements());
                     mtrFile.read(reinterpret_cast<char *>(&mtr[0]), sizeof(int)*mesh->numElements());
@@ -327,6 +334,9 @@ int sbfToVTKWriter::write()
     else
         writer->Write();
     writer->Stop();
+    report("Readed files:");
+    for(const auto &r : writedSteps)
+        report(r.first, std::to_string(r.second.second) + "..." + std::to_string(r.second.second));
     std::cout << "Done" << std::endl;
 
     return 0;
