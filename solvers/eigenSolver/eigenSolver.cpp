@@ -94,7 +94,7 @@ EigenSolver::EigenSolver(const sbfStiffMatrix *stiff, const double *diagMass) :
 {
 }
 
-void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formConvFactor)
+void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formConvFactor, bool makeReport)
 {
 
     //Some assertions
@@ -117,7 +117,7 @@ void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formCon
     //Generate initial gess
     for(int ct = 0; ct < numEig_; ++ct) forms_[ct][ct] = 1.0;
 
-    CreateSmartAndRawPtr(sbfStiffMatrix, const_cast<sbfStiffMatrix*>(stiff_)->createChol(), iChol);
+    CreateSmartAndRawPtr(sbfStiffMatrix, const_cast<sbfStiffMatrix*>(stiff_)->createChol(makeReport), iChol);
     CreateSmartAndRawPtr(sbfMatrixIterator, const_cast<sbfStiffMatrix*>(stiff_)->createIterator(), stiffIterator);
     CreateSmartAndRawPtr(sbfMatrixIterator, iChol->createIterator(), iCholIterator);
     CreateSmartAndRawPtr(double, new double [numEig_*numEig_], K_reduced);
@@ -212,7 +212,8 @@ void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formCon
         for(int ct = 0; ct < numEig_; ++ct) lambda_reduced_prev[ct] = lambda_reduced[ct];
         double minLambda = lambda_reduced[0];
         for(int ct = 0; ct < numEig_; ++ct) if( minLambda > lambda_reduced[ct] ) minLambda = lambda_reduced[ct];
-        report("convSum=", convSum, "first freq", std::sqrt(minLambda)/2.0/(std::atan(1)*4));
+        if(makeReport)
+            report("convSum=", convSum, "first freq", std::sqrt(minLambda)/2.0/(std::atan(1)*4));
     }
 
     std::vector<double> tmpRez(lambda_reduced, lambda_reduced+numEig_);

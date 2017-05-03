@@ -45,7 +45,7 @@ int main (int argc, char ** argv)
         while(getline(sstr, entry, ',')) {
             solBundleNames.push_back(entry);
         }
-    else
+    else if(solBundleNamesStr.size())
         solBundleNames.push_back(solBundleNamesStr);
 
     if (vm.count("help") || vm.count("h")) { std::cout << desc << "\n"; return 1; }

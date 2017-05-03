@@ -229,7 +229,11 @@ void SbfView::setWarpFactor(double factor)
 void SbfView::setArrayToMap(QString name, int component)
 {
     int arrayID = -1;
+    arrayInMap_.clear();
     auto cellArray = model_->grid()->GetCellData()->GetArray(name.toStdString().c_str(), arrayID);
+    auto nodeArray = model_->grid()->GetPointData()->GetArray(name.toStdString().c_str(), arrayID);
+    if( cellArray || nodeArray )
+        arrayInMap_ = name;
     bar_->SetDrawTickLabels(true);
     if(cellArray) {
         model_->grid()->GetCellData()->SetScalars(cellArray);
@@ -254,8 +258,7 @@ void SbfView::setArrayToMap(QString name, int component)
         update();
         return;
     }
-    auto nodeArray = model_->grid()->GetPointData()->GetArray(name.toStdString().c_str(), arrayID);
-    if(nodeArray) {
+    else if(nodeArray) {
         mapper_->SetScalarMode(VTK_SCALAR_MODE_USE_POINT_FIELD_DATA);
         auto range = nodeArray->GetRange(component);
         auto rangeIt = fixedRanges_.find(std::make_pair(name.toStdString(), component));

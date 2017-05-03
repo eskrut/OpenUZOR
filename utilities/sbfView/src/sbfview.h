@@ -32,6 +32,7 @@ private:
     vtkSmartPointer<vtkWarpVector> warp_;
     double warpFactor_;
     QMap<std::pair<std::string, int>, std::pair<double, double>> fixedRanges_;
+    QString arrayInMap_;
 
 public:
     void setModel(SbfModel *model);
@@ -58,6 +59,8 @@ public slots:
     void setWarpFactor(double factor);
 
     void setArrayToMap(QString name, int component = -1);
+public:
+    QString arrayInMap() const { return arrayInMap_; }
 private:
     void fillMtrLt(vtkDataArray *array);
 };

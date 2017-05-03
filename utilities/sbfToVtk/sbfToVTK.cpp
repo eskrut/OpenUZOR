@@ -336,7 +336,7 @@ int sbfToVTKWriter::write()
     writer->Stop();
     report("Readed files:");
     for(const auto &r : writedSteps)
-        report(r.first, std::to_string(r.second.second) + "..." + std::to_string(r.second.second));
+        report(r.first, std::to_string(r.second.first) + "..." + std::to_string(r.second.second));
     std::cout << "Done" << std::endl;
 
     return 0;
