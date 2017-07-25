@@ -60,7 +60,6 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
         settings_->endGroup();
     }
     if(status == 0) {
-        mesh_->printInfo();
         const int numNodes = mesh_->numNodes();
         points_->SetNumberOfPoints(numNodes);
         for(int ct = 0; ct < numNodes; ++ct) {
@@ -179,7 +178,8 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
                 auto array = Fsol->array(ct);
                 if(array) {
                     vtkFloatArray *data(vtkFloatArray::New());
-                    data->SetName((aName+"/"+ (useProvidedNames ? *(it++) : Fsol->name(ct))).c_str());
+                    auto name = aName+"/"+ (useProvidedNames ? *(it) : Fsol->name(ct));
+                    data->SetName(name.c_str());
                     data->SetNumberOfComponents(1);
                     data->SetNumberOfTuples(numNodes);
                     for(int ctNode = 0; ctNode < numNodes; ++ctNode)
@@ -191,6 +191,7 @@ void SbfModel::addData(const QString &fileName, const QString &arrayName, GessTy
                     item->setData(qVariantFromValue(static_cast<void*>(data)), SbfDataItem::VtkPointerRequest);
                     dataModel_->invisibleRootItem()->appendRow(item);
                 }
+                ++it;
             }
             return;
         }

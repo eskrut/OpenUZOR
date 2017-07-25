@@ -226,6 +226,7 @@ void SbfView::setWarpFactor(double factor)
     warp_->Update();
 }
 
+//TODO allowe warp and mapping by different fields
 void SbfView::setArrayToMap(QString name, int component)
 {
     int arrayID = -1;
