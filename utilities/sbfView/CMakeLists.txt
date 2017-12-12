@@ -14,9 +14,7 @@ include_directories(${SBF_INCLUDE_DIRS})
 find_package(VTK COMPONENTS
   vtkCommonCore
   vtkGUISupportQt
-  vtkGUISupportQtOpenGL
   vtkIOInfovis
-#  vtkRenderingFreeTypeOpenGL
   vtkViewsInfovis
 REQUIRED NO_MODULE)
 include(${VTK_USE_FILE})
