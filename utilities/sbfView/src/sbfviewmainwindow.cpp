@@ -109,6 +109,11 @@ void SbfViewMainWindow::initializeShortCuts()
     auto quitShC = new QShortcut(QKeySequence("Ctrl+Q"), this);
     connect(quitShC, &QShortcut::activated, this, &SbfViewMainWindow::close);
 
+    auto updateShC = new QShortcut(QKeySequence("Ctrl+U"), this);
+    connect(updateShC, &QShortcut::activated, this, [=](){
+        model_->reReadLast();
+    });
+
     auto toggleTest = new QShortcut(QKeySequence("Ctrl+T"), this);
     connect(toggleTest, &QShortcut::activated, [=](){
         //Make simple test mesh

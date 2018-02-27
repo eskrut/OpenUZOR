@@ -34,6 +34,7 @@ private:
 public:
     const sbfMesh *mesh() const { return mesh_; }
     int readModel(const QString &indName, const QString &crdName, const QString &mtrName);
+    int reReadLast();
     enum class GessType {
         None = 0,
         NodeFloat,

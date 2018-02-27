@@ -29,21 +29,25 @@ SbfModel::SbfModel(QObject *parent, QSettings *settings) :
         clipBoxBounds_[ct*2+1] = std::numeric_limits<float>::max();
     }
 
-    if(settings_){
-        settings_->beginGroup("lastRead");
-        QString lastInd = settings_->value("ind").toString();
-        QString lastCrd = settings_->value("crd").toString();
-        QString lastMtr = settings_->value("mtr").toString();
-        settings_->endGroup();
-        if(lastInd.size() && lastCrd.size() && lastMtr.size())
-            if(QFileInfo(lastInd).exists() && QFileInfo(lastCrd).exists() && QFileInfo(lastMtr).exists())
-                readModel(lastInd, lastCrd, lastMtr);
-    }
+    reReadLast();
 
 }
 
 int SbfModel::readModel(const QString &indName, const QString &crdName, const QString &mtrName)
 {
+    grid_ = vtkUnstructuredGrid::New();
+    clipped_ = vtkClipPolyData::New();/*vtkBoxClipDataSet::New();*/
+    points_ = vtkPoints::New();
+    cells_ = vtkCellArray::New();
+    mesh_ = new sbfMesh;
+
+    dataModel_ = new SbfDataModel(this);
+
+    for(size_t ct = 0; ct < 3; ++ct){
+        clipBoxBounds_[ct*2+0] = std::numeric_limits<float>::lowest();
+        clipBoxBounds_[ct*2+1] = std::numeric_limits<float>::max();
+    }
+
     int status = mesh_->readMeshFromFiles(indName.toLocal8Bit(), crdName.toLocal8Bit(), mtrName.toLocal8Bit());
     points_ = vtkPoints::New();
     cells_ = vtkCellArray::New();
@@ -95,6 +99,21 @@ int SbfModel::readModel(const QString &indName, const QString &crdName, const QS
         updateClipped();
     }
     return status;
+}
+
+int SbfModel::reReadLast()
+{
+    if(settings_){
+        settings_->beginGroup("lastRead");
+        QString lastInd = settings_->value("ind").toString();
+        QString lastCrd = settings_->value("crd").toString();
+        QString lastMtr = settings_->value("mtr").toString();
+        settings_->endGroup();
+        if(lastInd.size() && lastCrd.size() && lastMtr.size())
+            if(QFileInfo(lastInd).exists() && QFileInfo(lastCrd).exists() && QFileInfo(lastMtr).exists())
+                return readModel(lastInd, lastCrd, lastMtr);
+    }
+    return 1;
 }
 
 void SbfModel::addData(const QString &fileName, const QString &arrayName, GessType gType, int numPlaceholders, const std::list<std::string> &names)
