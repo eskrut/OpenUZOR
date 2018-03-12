@@ -41,6 +41,17 @@ public:
     }
 
     sbfCmdOptions &add(const std::string &option,
+                       std::string &bindValue,
+                       const std::string &description = std::string(),
+                       const std::string &defaultValue = std::string()
+                       )
+    {
+        desc.add_options()
+                (option.c_str(), po::value<std::string>(&bindValue)->default_value(defaultValue), description.c_str());
+        return *this;
+    }
+
+    sbfCmdOptions &add(const std::string &option,
                        bool &bindValue,
                        const std::string &description = std::string(),
                        const bool &defaultValue = false
