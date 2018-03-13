@@ -6,6 +6,8 @@
 
 namespace po = boost::program_options;
 
+#include "sbfReporter.h"
+
 class sbfCmdOptions {
 public:
     sbfCmdOptions(const std::string &name = std::string("Options")) :
@@ -64,8 +66,14 @@ public:
 
     void parceCmd(int argc, char **argv)
     {
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-        po::notify( vm );
+        try {
+            po::store(po::parse_command_line(argc, argv, desc), vm);
+            po::notify( vm );
+        }
+        catch (std::exception &e) {
+            report.raiseError("sbfCmdOptions::parceCmd:", e.what());
+            throw e;
+        }
 
         if(workDir.size() == 0)
             workDir = "./";
@@ -77,9 +85,15 @@ public:
     {
         std::ifstream settingsFile(iniFile, std::ifstream::in);
         if(settingsFile.good()) {
-            po::store( po::parse_config_file( settingsFile , desc ), vm );
-            settingsFile.close();
-            po::notify( vm );
+            try {
+                po::store( po::parse_config_file( settingsFile , desc ), vm );
+                settingsFile.close();
+                po::notify( vm );
+            }
+            catch (std::exception &e) {
+                report.raiseError("sbfCmdOptions::parceIni:", e.what());
+                throw e;
+            }
 
             if(workDir.size() == 0)
                 workDir = "./";
