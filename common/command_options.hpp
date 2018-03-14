@@ -114,6 +114,16 @@ public:
         return vm.count(option);
     }
 
+    template<typename T>
+    T getValue(const std::string & option, bool *ok) {
+        if(vm.count(option)) {
+            if(ok) *ok = true;
+            return vm[option].as<T>();
+        }
+        if(ok) *ok = false;
+        return T();
+    }
+
     std::string getIndName() const;
 
     std::string getCrdName() const;

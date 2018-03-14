@@ -13,5 +13,6 @@ build*
 */*/Debug*
 */*/debug*
 *.user
+*.user.*
 */*.user
 */*/*.user
