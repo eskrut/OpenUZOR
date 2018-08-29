@@ -20,13 +20,15 @@ public:
     sbfCmdOptions &makeMeshFilesOps(const std::string &iName = "ind.sba",
                                     const std::string &cName = "crd.sba",
                                     const std::string &mName = "mtr0001.sba",
+                                    const std::string &prefix = "",
                                     const std::string &wDir = "./")
     {
         desc.add_options()
                 ("work-dir,w", po::value<std::string>(&workDir)->default_value(wDir), "work catalog")
                 ("ind-file,i", po::value<std::string>(&indName)->default_value(iName), "ind file")
                 ("crd-file,c", po::value<std::string>(&crdName)->default_value(cName), "crd file")
-                ("mtr-file,m", po::value<std::string>(&mtrName)->default_value(mName), "mtr file");
+                ("mtr-file,m", po::value<std::string>(&mtrName)->default_value(mName), "mtr file")
+                ("name-prefix", po::value<std::string>(&namePrefix)->default_value(prefix), "prefix for mesh files names");
         return *this;
     }
 
@@ -39,6 +41,17 @@ public:
     {
         desc.add_options()
                 (option.c_str(), po::value<T>(&bindValue)->default_value(defaultValue), description.c_str());
+        return *this;
+    }
+
+    template<class T>
+    sbfCmdOptions &add_required(const std::string &option,
+                                T &bindValue,
+                                const std::string &description = std::string()
+            )
+    {
+        desc.add_options()
+                (option.c_str(), po::value<T>(&bindValue)->required(), description.c_str());
         return *this;
     }
 
@@ -102,6 +115,36 @@ public:
         }
     }
 
+    void parce(int argc, char **argv, const std::string &iniKey = std::string())
+    {
+        try {
+            po::store(po::parse_command_line(argc, argv, desc), vm);
+            if(iniKey.size()) {
+                bool ok;
+                auto w = getValue<std::string>("work-dir", &ok);
+                auto i = getValue<std::string>(iniKey, &ok);
+                if(!ok) report.raiseError("Cant parce ini file name from options");
+                std::ifstream settingsFile(w+i, std::ifstream::in);
+                if(settingsFile.good()) {
+                    po::store( po::parse_config_file( settingsFile , desc ), vm );
+                    settingsFile.close();
+                }
+                else
+                    report.raiseError("Cant read ini file", w+i);
+            }
+            po::notify( vm );
+        }
+        catch (std::exception &e) {
+            report.raiseError("sbfCmdOptions::parceCmd:", e.what());
+            throw e;
+        }
+
+        if(workDir.size() == 0)
+            workDir = "./";
+        else if( workDir.back() != '/')
+            workDir += "/";
+    }
+
 //    //template<class ...B, typename std::enable_if<sizeof... (B) == 0>::type>
 //    //typename std::enable_if<sizeof... (B) == 0>::type
 //    bool haveInOptoions(/*B ...b*/){ return true;}
@@ -130,6 +173,8 @@ public:
 
     std::string getMtrName() const;
 
+    std::string getPrefix() const;
+
     std::string getWorkDir() const;
 
     std::string getIndPath() const;
@@ -148,24 +193,29 @@ private:
     po::options_description desc;
     po::variables_map vm;
     std::string workDir;
-    std::string indName, crdName, mtrName;
+    std::string indName, crdName, mtrName, namePrefix;
 };
 
 #endif // COMMAND_OPTIONS_HPP
 
 std::string sbfCmdOptions::getIndName() const
 {
-return indName;
+return namePrefix + indName;
 }
 
 std::string sbfCmdOptions::getCrdName() const
 {
-return crdName;
+return namePrefix + crdName;
 }
 
 std::string sbfCmdOptions::getMtrName() const
 {
-return mtrName;
+    return namePrefix + mtrName;
+}
+
+std::string sbfCmdOptions::getPrefix() const
+{
+    return namePrefix;
 }
 
 std::string sbfCmdOptions::getWorkDir() const
@@ -175,15 +225,15 @@ std::string sbfCmdOptions::getWorkDir() const
 
 std::string sbfCmdOptions::getIndPath() const
 {
-    return workDir + indName;
+    return workDir + namePrefix + indName;
 }
 
 std::string sbfCmdOptions::getCrdPath() const
 {
-    return workDir + crdName;
+    return workDir + namePrefix + crdName;
 }
 
 std::string sbfCmdOptions::getMtrPath() const
 {
-    return workDir + mtrName;
+    return workDir + namePrefix + mtrName;
 }

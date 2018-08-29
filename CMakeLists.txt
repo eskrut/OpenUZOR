@@ -1,5 +1,8 @@
 project(OpenUZOR)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to 'Release' as none was specified.")
@@ -13,8 +16,9 @@ add_subdirectory(utilities)
 add_subdirectory(solvers)
 
 if(UNIX)
-    set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -Wextra -pedantic ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic ${CMAKE_CXX_FLAGS}")
 endif()
+
 find_package(sbf REQUIRED)
 include_directories(${SBF_INCLUDE_DIRS})
 
