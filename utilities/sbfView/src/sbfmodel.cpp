@@ -316,9 +316,6 @@ void SbfModel::updateClipped()
     clipped_->SetInputData(geometryFilter->GetOutput());
     clipped_->Update();
     clipped_->GenerateClippedOutputOn();
-//    clipped_->SetBoxClip(clipBoxBounds_[0], clipBoxBounds_[1],
-//                         clipBoxBounds_[2], clipBoxBounds_[3],
-//                         clipBoxBounds_[4], clipBoxBounds_[5]);
     auto box = vtkBox::New();
     box->SetBounds(clipBoxBounds_[0], clipBoxBounds_[1],
             clipBoxBounds_[2], clipBoxBounds_[3],

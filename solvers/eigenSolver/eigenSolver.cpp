@@ -2,6 +2,7 @@
 
 #include <Eigen/Eigenvalues>
 #include <Eigen/Cholesky>
+#include <cmath>
 
 #include "sbfMatrixIterator.h"
 #include "sbfStiffMatrix.h"
@@ -140,6 +141,7 @@ void EigenSolver::compute(int numTarget, double lambdaConvFactor, double formCon
         }
         else {
             //TODO Implement multiplication for non diagonal mass matrix
+            report.raiseError("Not Implemented");
         }
         //Solve for new approximation
         // K * X_{k+1} = M * X_k

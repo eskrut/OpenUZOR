@@ -19,6 +19,7 @@ if(UNIX)
     set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic ${CMAKE_CXX_FLAGS}")
 endif()
 
+find_package(Threads REQUIRED)
 find_package(sbf REQUIRED)
 include_directories(${SBF_INCLUDE_DIRS})
 

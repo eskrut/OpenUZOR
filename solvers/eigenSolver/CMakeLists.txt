@@ -25,8 +25,11 @@ include_directories(${SBF_INCLUDE_DIRS})
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} ${SBF_LIBRARIES})
+find_package(Eigen3 REQUIRED NO_MODULE)
+include_directories(${Eigen3_INCLUDE_DIRS})
 
-target_link_libraries(${TEST} ${Boost_LIBRARIES} ${SBF_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SBF_LIBRARIES} Eigen3::Eigen)
+
+target_link_libraries(${TEST} ${Boost_LIBRARIES} ${SBF_LIBRARIES} Eigen3::Eigen)
 enable_testing()
 add_test(${TEST} ${TEST})

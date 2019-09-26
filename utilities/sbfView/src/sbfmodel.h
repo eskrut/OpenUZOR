@@ -49,7 +49,8 @@ public:
                  const std::list<std::string> &names = std::list<std::string>({})
                  );
     vtkDataArray *data(const QString &arrayName) const;
-    vtkSmartPointer<vtkPolyData/*vtkUnstructuredGrid*/> grid() const { return clipped_->GetClippedOutput(); }
+    vtkSmartPointer<vtkUnstructuredGrid> grid() const { return grid_;}
+    vtkSmartPointer<vtkPolyData> clipped() const { return /*clipped_->GetOutput();*/clipped_->GetClippedOutput(); }
     vtkPoints *points() const {return points_;}
     vtkCellArray *cells() const {return cells_;}
     SbfDataModel *dataModel() const { return dataModel_; }

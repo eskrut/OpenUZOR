@@ -10,6 +10,7 @@
 #include "sbfMesh.h"
 #include "sbfNode.h"
 #include "sbfElement.h"
+#include "sbfMeshBuilders.h"
 
 #include <memory>
 
@@ -117,7 +118,7 @@ void SbfViewMainWindow::initializeShortCuts()
     auto toggleTest = new QShortcut(QKeySequence("Ctrl+T"), this);
     connect(toggleTest, &QShortcut::activated, [=](){
         //Make simple test mesh
-        std::unique_ptr<sbfMesh> m(sbfMesh::makeBlock(1, 2, 3, 1, 2, 3));
+        std::unique_ptr<sbfMesh> m(sbfMeshBuilder::makeBlock(1, 2, 3, 1, 2, 3));
         NodesData<float> data("test", m.get());
         for(int ct = 0; ct < m->numNodes(); ++ct) {
             data.data(ct, 0) = m->node(ct).z()*m->node(ct).z();

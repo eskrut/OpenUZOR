@@ -113,7 +113,7 @@ void sbfToVTKWriter::check()
 
 int sbfToVTKWriter::write()
 {
-    cout << "Started" << endl;
+    report("Started");
     check();
     if(!flagValidNames_) {
         report.error("Not valid files. Abort.");
@@ -201,7 +201,7 @@ int sbfToVTKWriter::write()
     }
 
     if(stepsToWrite_ > 0){
-        cout << "Will write " << stepsToWrite_ << " steps:" << endl;
+        report("Will write ", stepsToWrite_, " steps:");
         report.createNewProgress("Writing time steps");
         writer->SetNumberOfTimeSteps(stepsToWrite_);
     }
@@ -211,7 +211,6 @@ int sbfToVTKWriter::write()
         bool flagNextDataExisted = true;
         int stepCount = 1;
         while(flagNextDataExisted && stepCount <= stepsToWrite_){
-//            cout << "step " << stepCount << " of " << stepsToWrite_ << endl;
             report.updateProgress(0, stepsToWrite_, stepCount);
             bool flagSomeFileReadSuccess = false;
             for(std::list<SbaNameParts>::iterator it = nodesDataNames_.begin(); it != nodesDataNames_.end(); it++){//Process nodes data
@@ -232,7 +231,6 @@ int sbfToVTKWriter::write()
                     array->SetNumberOfTuples(mesh->numNodes());
                     flagSomeFileReadSuccess = true;
                     for(int ct = 0; ct < mesh->numNodes(); ct++) for(int ct1 = 0; ct1 < numComponents; ct1++) array->SetComponent(ct, ct1, nodesData->data(ct, ct1));
-                    //for(int ct = 0; ct < mesh->numNodes(); ct++) for(int ct1 = 0; ct1 < numComponents; ct1++) cout << nodesData->data(ct, ct1) << endl;
                     grid->GetPointData()->AddArray(array);
                 }
                 else{
@@ -263,7 +261,6 @@ int sbfToVTKWriter::write()
                     for(int ct = 0; ct < nuArrays; ct++){
                         int index;
                         NodesData<sbfReadWriteType, 1> * data = solBundle->array(ct);
-//                        std::cout << ((*it).base + solBundle->name(ct)).c_str() << std::endl;
                         std::string arrName = (*it).base + solBundle->name(ct);
                         vtkDataArray * darray = grid->GetPointData()->GetArray(arrName.c_str(), index);
                         if(index > -1) darray->Delete();
@@ -337,7 +334,7 @@ int sbfToVTKWriter::write()
     report("Readed files:");
     for(const auto &r : writedSteps)
         report(r.first, std::to_string(r.second.first) + "..." + std::to_string(r.second.second));
-    std::cout << "Done" << std::endl;
+    report("Done");
 
     return 0;
 }

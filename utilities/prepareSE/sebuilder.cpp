@@ -116,7 +116,7 @@ void SEBuilder::processFacesWeigthOwners(const std::vector<int> &regElems, std::
 
     }//Loop on elements
 
-    quickAssociatedSort<double, int>(facesWeigth.data(), facesOwners.data(), 0, facesWeigth.size()-1);
+    sbf::quickAssociatedSort<double, int>(facesWeigth.data(), facesOwners.data(), 0, facesWeigth.size()-1);
 }
 
 void SEBuilder::partSE(sbfSElement *sElem, int nParts, double maxImbalance)

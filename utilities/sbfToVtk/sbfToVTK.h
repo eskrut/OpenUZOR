@@ -6,12 +6,14 @@
 typedef float sbfReadWriteType;
 
 struct SbaNameParts{
+    SbaNameParts() = default;
+    SbaNameParts(const std::string &base, int numDigits = 4, const std::string &ext = "sba") : base(base), numDigits(numDigits), ext(ext) {}
     std::string base;
     int numDigits;
     std::string ext;
-    std::string construct(){
+    std::string construct(int curID = 1){
         std::stringstream fullName;
-        fullName << base << std::setw(numDigits) << std::setfill('0') << 1 << "." << ext;
+        fullName << base << std::setw(numDigits) << std::setfill('0') << curID << "." << ext;
         return fullName.str();
     }
 };
