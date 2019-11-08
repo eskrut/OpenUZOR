@@ -111,8 +111,10 @@ void sbfToVTKWriter::check()
     stepsToWrite_ = numSteps;
 }
 
-int sbfToVTKWriter::write()
+int sbfToVTKWriter::write(bool doOutput)
 {
+    bool oldFlag = report.allowOtput();
+    report.setAllowOtput(doOutput);
     report("Started");
     check();
     if(!flagValidNames_) {
@@ -128,7 +130,7 @@ int sbfToVTKWriter::write()
     fullMName << catalog_ << mtrName_;
     if( mesh->readMeshFromFiles(fullIName.str().c_str(), fullCName.str().c_str(), fullMName.str().c_str()) != 0 )
         return 2;
-    mesh->printInfo();
+    if(doOutput) mesh->printInfo();
     report("Using compression ", flagUseCompression_ ? "ON" : "OFF");
 
     vtkUnstructuredGrid * grid = vtkUnstructuredGrid::New();
@@ -335,6 +337,8 @@ int sbfToVTKWriter::write()
     for(const auto &r : writedSteps)
         report(r.first, std::to_string(r.second.first) + "..." + std::to_string(r.second.second));
     report("Done");
+
+    report.setAllowOtput(oldFlag);
 
     return 0;
 }

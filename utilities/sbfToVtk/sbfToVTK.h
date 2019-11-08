@@ -61,7 +61,8 @@ public:
     std::list<SbaNameParts> & nodesDataNames() { return nodesDataNames_; }
     void setUseCompression(bool use) { flagUseCompression_ = use; }
 
-    int write(); // main write function
+    //TODO eliminate report output flag after resolving report objects issue
+    int write(bool doReportOutput = true); // main write function
 };
 
 #endif// _SBFTOVTK_H_
